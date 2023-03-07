@@ -1,18 +1,6 @@
-# -*- coding: utf-8 -*-
-"""
-Created on Fri Jul  8 14:19:49 2022
-
-@author: SmartTouch 10th
-"""
-
-## 2022 07 15
-## 이미지 normalization 필요
-
-
 import numpy as np
 import matplotlib.pyplot as plt
 import umap
-from numpy import ndarray
 from sklearn.cluster import KMeans
 from sklearn.cluster import MiniBatchKMeans
 from sklearn.cluster import SpectralClustering
@@ -24,7 +12,6 @@ import matplotlib
 matplotlib.use('Qt5Agg')
 from scipy.spatial.distance import pdist, squareform
 from skimage.transform import resize
-from sklearn import preprocessing
 
 
 def one_round_clustering(n_clusters, manifold_data):
@@ -171,22 +158,6 @@ plt.figure()
 plt.imshow(data[0,10,5],vmin = 0 , vmax = 1)
 plt.figure()
 plt.imshow(data_2[15,1],vmin = 0 , vmax = 1)
-# plt.figure()
-# plt.imshow(data[1,0])
-# plt.figure()
-# plt.imshow(data[2,0])
-# plt.figure()
-# plt.imshow(data[3,0])
-# plt.figure()
-# plt.imshow(data[4,0])
-# plt.figure()
-# plt.imshow(data[5,0])
-# plt.figure()
-# plt.imshow(data[6,0])
-# plt.figure()
-# plt.imshow(data[7,0])
-# plt.figure()
-# plt.imshow(data[8,0])
 
 
 

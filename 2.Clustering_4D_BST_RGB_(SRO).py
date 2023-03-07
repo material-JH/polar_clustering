@@ -12,6 +12,7 @@ Created on Fri Jul  8 14:19:49 2022
 import numpy as np
 import matplotlib.pyplot as plt
 import umap
+from numpy import ndarray
 from sklearn.cluster import KMeans
 from sklearn.cluster import MiniBatchKMeans
 from sklearn.cluster import SpectralClustering
@@ -20,7 +21,6 @@ from matplotlib import cm
 import matplotlib
 matplotlib.use('Qt5Agg')
 import imutils as imutils
-
 
 def one_round_clustering(n_clusters, manifold_data):
     if np.shape(manifold_data)[1] > 1000:
@@ -67,24 +67,55 @@ def get_rotation_matrix(i_v, unit=None):
 def NormalizeData(data):
     return (data - np.min(data)) / (np.max(data) - np.min(data))
 
+##
+## npy set 2 = norm set 1
+## npy set 1 - 데미지 있는 데이터
+
+# Total data pic
+p = 'D:/1.Experimental_data/7.삼성종기원과제_2022/2022_07_06_machine_learning_raw_data/npy_file/Ru/set2/bin_4/Ru_set2_0V_bin4.npy'
+orig = np.load(p)
+tem = np.sum(np.sum(orig, axis=1), axis=0)
+fig = plt.figure(figsize=(16, 30))
+ax = fig.add_subplot()
+ax.imshow(tem)
+#orig = np.rollaxis(np.rollaxis(orig, 2), 3, 1)
+
 # read voltage data
 data = np.zeros((5,38,10,100,50))
 
+from PIL import Image
 data_1 = []
-for i in range(-2, 3):
-    path_3 = 'D:/1.Experimental_data/7.삼성종기원과제_2022/2022_08_20_SRO_4d/4D_data/set3/'
-    image_name_3 = '{}_SRO_set3_crop_d.npy'.format(i)
-    data_path = path_3+image_name_3
-    data_1.append(np.load(data_path))
-data_1 = np.stack(data_1, axis=0)
 
+
+for i in range(-2, 3):
+    p_2 = 'H:/5.Script/14.Machine_learning/'
+    im_1 = Image.open(p_2 + 'max_value_array_SRO_set4_%iV_re3.tif' % i)
+    im_1 = np.array(im_1)
+
+    path_3 = 'D:/1.Experimental_data/7.삼성종기원과제_2022/2022_08_20_SRO_4d/4D_data/set4/'
+    image_name_3 = '{}_SRO_set4_crop_d.npy'.format(i)
+    data_1_img = (np.load(path_3 + image_name_3))
+    for m in range(38):
+        for n in range(10):
+            data_1_img[m,n,:,:] = data_1_img[m,n,:,:]/im_1[m,n]
+    data_1.append(data_1_img)
+
+data_1 = np.stack(data_1, axis=0)
 
 data_2 = []
 for i in range(-2, 3):
-    path_2 = 'D:/1.Experimental_data/7.삼성종기원과제_2022/2022_08_20_SRO_4d/4D_data/set3/'
-    image_name_2 = '{}_SRO_set3_crop_u.npy'.format(i)
-    data_path_2 = path_2+image_name_2
-    data_2.append(np.load(data_path_2))
+    p_3 = 'H:/5.Script/14.Machine_learning/'
+    im_3 = Image.open(p_3 + 'max_value_array_SRO_set4_%iV_re3.tif' % i)
+    im_3 = np.array(im_3)
+
+    path_2 = 'D:/1.Experimental_data/7.삼성종기원과제_2022/2022_08_20_SRO_4d/4D_data/set4/'
+    image_name_2 = '{}_SRO_set4_crop_u.npy'.format(i)
+    data_2_img = (np.load(path_2 + image_name_2))
+    for m in range(38):
+        for n in range(10):
+            data_2_img[m,n,:,:] = data_2_img[m, n, :, :] / im_3[m, n]
+    data_2.append(data_2_img)
+
 data_2 = np.stack(data_2, axis=0)
 
 angle_1 = 180
@@ -104,9 +135,9 @@ mask = np.sqrt((x - crow)**2 + (y-ccol)**2) <= radius
 plt.figure()
 plt.imshow(mask)
 
-#
-# plt.figure()
-# plt.imshow(data[2,5,9,:,:])
+
+plt.figure()
+plt.imshow(data[2,5,9,:,:])
 
 
 bin_y = 5
@@ -116,31 +147,66 @@ start_y = 20
 start_x = 0
 
 data_crop = np.zeros((50,50))
-data_crop =+ data[:,start_y:start_y+bin_y,
-                  start_x+start_x:start_x+bin_x]
+data_crop =+ data[:,start_y:start_y+bin_y,start_x+start_x:start_x+bin_x,:,:]
 data_crop = np.sum(np.sum(data_crop,axis=2),axis=1)
 
-plt.figure()
-plt.imshow(data_crop[2])
+for i in range(5):
+    for j in range(38):
+        for k in range(10):
+            data_1_mask = data_1[i,j,k,:,:]*mask
+            data_1[i,j,k,:,:] = data_1_mask
 
 for i in range(5):
     for j in range(38):
         for k in range(10):
-            data_mask_1 = data_1[i,j,k,:,:]*mask
-            data_1[i,j,k,:,:] = data_mask_1
-
-for i in range(5):
-    for j in range(38):
-        for k in range(10):
-            data_mask_2 = data_2[i,j,k,:,:]*mask
-            data_2[i,j,k,:,:] = data_mask_2
-
+            data_2_mask = data_2[i,j,k,:,:]*mask
+            data_2[i,j,k,:,:] = data_2_mask
 
 data[:,:,:,0:50,0:50] = data_1
 data[:,:,:,50:100,0:50] = data_2
 
 plt.figure()
 plt.imshow(data[2,15,5])
+
+
+# plt.figure()
+# plt.imshow(NormalizeData(data_crop[0]),vmax=1,vmin=0)
+# plt.figure()
+# plt.imshow(data_crop[4],vmax=1.1e6,vmin=1e4)
+
+#data[0,10, 1, :, :] = data[0,10, 1, :, :]*0.6
+# data[0,10, 2, :, :] = data[0,10, 2, :, :]*0.9
+# data[0,10, 3, :, :] = data[0,10, 3, :, :]*0.9
+# data[0,10, 4, :, :] = data[0,10, 4, :, :]*0.9
+# data[0,10, 5, :, :] = data[0,10, 5, :, :]*0.9
+
+# voltage = 0
+# bin_y = 6
+# bin_x = 9
+# start_y = 13
+# start_x = 0
+#
+# data_crop = np.zeros((50,50))
+# for i in range(bin_y):
+#     for j in range(bin_x):
+#         data_crop =+ orig[start_y+i,start_x+j,:,:]
+# data_crop = data_crop/(bin_y*bin_x)
+# plt.figure()
+# plt.imshow(data_crop)
+
+#
+# dp_vec2 = np.reshape(data, (ndata,x,y,int(kx*ky/2),2))
+# plt.figure()
+# plt.imshow(dp_vec2[2,15,5,:,:])
+
+
+#
+# for i in range(5):
+#     for j in range(38):
+#         for k in range(10):
+#             data_1_crop = data[i,j,k,:,:]
+#             data_1_crop = NormalizeData(data_1_crop)
+#             data[i,j,k,:,:] = data_1_crop
 
 
 ndata, x, y, kx, ky = np.shape(data)
@@ -159,7 +225,7 @@ ax.scatter(xy[:,0],xy[:,1],xy[:,2])
 
 
 
-labels, _ = one_round_clustering(1, xy)
+labels, _ = one_round_clustering(2, xy)
 labels = labels.reshape(5, 38, 10)
 '''
 fig = plt.figure(figsize=(45,30))
@@ -168,6 +234,32 @@ axs = gs.subplots(sharex=True, sharey=True)
 for i in range(5):
     axs[i].imshow(labels[i,:,:])
 '''
+
+labels[0:4,:5,:] = 1
+labels[0:4,29:,:] = 1
+labels[0:4,5:29,:] = 2
+
+labels[4,:4,:] = 1
+labels[4,28:,:] = 1
+labels[4,4:28,:] = 2
+
+#
+# labels[0:4,:5,:] = 1
+# labels[0:4,18:,:] = 1
+# labels[0:4,5:18,:] = 2
+#
+# labels[4,:4,:] = 1
+# labels[4,17:,:] = 1
+# labels[4,4:17,:] = 2
+
+# labels[0:4,:18,:] = 1
+# labels[0:4,18:,:] = 1
+# labels[0:4,18:29,:] = 2
+#
+# labels[4,:17,:] = 1
+# labels[4,17:,:] = 1
+# labels[4,17:28,:] = 2
+
 # extract middle portion
 val = 0
 wow = None
@@ -176,7 +268,7 @@ for k, v in Counter(labels.reshape(-1)).items():
         val = v
         wow = k
 
-xybool = labels == wow
+xybool = labels == 2
 dp_vec_sub = dp_vec[xybool.reshape(-1), :]
 
 fit = umap.UMAP(
@@ -274,3 +366,30 @@ for i in range(5):
     axs[i].imshow(all_label[i, :, :])
 
 
+
+# import cv2
+#
+#
+# resize_img = cv2.resize(all_label[0, :, :], (0, 0), fx=10, fy=10, interpolation=cv2.INTER_AREA)
+# cv2.imshow('$'.format(i),resize_img)
+#
+
+
+
+# line = np.mean(all_label, axis=2)
+# std = np.std(all_label, axis=2,dtype = np.float32)
+# line = np.moveaxis(np.mean(all_label, axis=2), 0, 1)
+# std = np.moveaxis(np.std(all_label[:,:,:,0], axis=2), 0, 1)
+# fig = plt.figure(figsize=(10, 30))
+# ax = fig.subplots()
+# ax.imshow(line)
+# fig = plt.figure(figsize=(10, 30))
+# ax = fig.subplots()
+# ax.imshow(std)
+
+# line_0 = line[:,:,:]
+#
+# from skimage import io
+#
+# line_0 = line_0.astype('float32')
+# io.imsave("line_0_set_2_d_re.tif", line_0_ff)
