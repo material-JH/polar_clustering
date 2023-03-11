@@ -1,3 +1,4 @@
+#%%
 import numpy as np
 import matplotlib.pyplot as plt
 import umap
@@ -9,7 +10,6 @@ from matplotlib import cm
 from PIL import Image
 import imutils as imutils
 import matplotlib
-matplotlib.use('Qt5Agg')
 from scipy.spatial.distance import pdist, squareform
 from skimage.transform import resize
 
@@ -159,7 +159,7 @@ plt.imshow(data[0,10,5],vmin = 0 , vmax = 1)
 plt.figure()
 plt.imshow(data_2[15,1],vmin = 0 , vmax = 1)
 
-
+#%%
 
 ndata, x, y, kx, ky = np.shape(data)
 dp_vec_1 = np.reshape(data, (ndata * x * y, kx * ky))
@@ -167,9 +167,13 @@ dp_vec_1 = np.reshape(data, (ndata * x * y, kx * ky))
 x_s, y_s, kx_s, ky_s = np.shape(data_2)
 dp_vec_2 = np.reshape(data_2, (x_s * y_s, kx_s * ky_s))
 
-dp_vec = np.zeros((np.shape(dp_vec_1)[0]+np.shape(dp_vec_2)[0], np.shape(dp_vec_1)[1]))
+dp_vec = np.zeros((np.shape(dp_vec_1)[0]+
+                   np.shape(dp_vec_2)[0], 
+                   np.shape(dp_vec_1)[1]))
 dp_vec[:np.shape(dp_vec_1)[0]] = dp_vec_1
-dp_vec[np.shape(dp_vec_1)[0]:np.shape(dp_vec_1)[0]+np.shape(dp_vec_2)[0]] = dp_vec_2
+dp_vec[np.shape(dp_vec_1)[0]:
+    np.shape(dp_vec_1)[0]+
+    np.shape(dp_vec_2)[0]] = dp_vec_2
 
 fit = umap.UMAP(
     n_neighbors=80,

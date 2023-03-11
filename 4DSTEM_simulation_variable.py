@@ -6,7 +6,6 @@ from abtem import *
 from abtem.waves import Probe
 from abtem.scan import GridScan
 from abtem.detect import PixelatedDetector
-# atoms = read('E:/5.Script/2.ABTEM/1.ABTEM_practice/result/2021_09_17_abtem_practice/srtio3_100.cif')
 from skimage.transform import resize
 
 
@@ -32,8 +31,8 @@ class Stem:
     def rotate_atom(self, tilt_angle, axis):
         self.atoms.rotate(tilt_angle, axis)
         
-    def set_atom(self, file):
-        self.atoms = read(file)
+    def set_atom(self, file_path):
+        self.atoms = read(file_path)
         
     def repeat_cell(self, rep):
         self.atoms *= rep
@@ -48,7 +47,7 @@ class Stem:
                       device=self.device).build(max_batch=32)
 
     def set_probe(self):
-        self.probe = Probe(energy=300e3, semiangle_cutoff=2.16, defocus=0, focal_spread=20, device='cpu', rolloff=0.)
+        self.probe = Probe(energy=300e3, semiangle_cutoff=2.16, defocus=0, focal_spread=20, device=self.device, rolloff=0.)
         self.probe.grid.match(self.potential)
 
     def set_scan(self, scan_width):
@@ -79,31 +78,22 @@ repeat_layer = 50
 stem = Stem('cpu')
 ##########################################################################################################
 ## Ratio between the displacement of Ti and O
-for i in range(5):
+for i in range(3):
     for j in range(3):
-        for k in range(3):
-            for l in range(5):
-                for m in range(5):
+        for thickness_layer in range(148, 160, 3):
+            for tilt_angle in np.linspace(-0.05, 0, 3):
+                for tilt_angle_y in np.linspace(-0.05, 0.05, 5):
 
                     stem.set_atom('cif/BST_down_{}_{}.cif'.format(1.0*i,1.0*j))
-## Thickness
-                    thickness_layer = int(148 + 5*k)
-
                     stem.repeat_cell((repeat_layer, repeat_layer, thickness_layer))
-##########################################################################################################
-## Tilt
-                    tilt_angle = -0.05 + 0.025 * l
-                    tilt_angle_y =  -0.05 + 0.025 * m
                     stem.rotate_atom(tilt_angle, 'x')
                     stem.rotate_atom(tilt_angle_y,'y')
-                    
                     stem.generate_pot(N, lattice_constant/2)
                     
                     stem.set_probe()
                     stem.set_scan((2 * 10, 2 * 10))
-##########################################################################################################
 
-                    measurement = stem.scan()
+                    measurement = stem.scan(16)
 
                     new_size = min(int(N * measurement.calibrations[2].sampling / measurement.calibrations[3].sampling),
                                    int(N * measurement.calibrations[3].sampling / measurement.calibrations[2].sampling))
@@ -120,20 +110,6 @@ for i in range(5):
 
                     measurement_np = crop_center(test, [55, 55])
 
-                    plt.imshow(measurement_np[0, 0, :, :])
-                    plt.show()
-                    array = measurement_np[0,0,:,:]
-##########################################################################################################
-## Correcting Distortion
-                    array_r = resize(array, (np.shape(array)[0], np.shape(array)[1]*38/41))
-                    array_r = crop_center_image(array_r, [50, 50])
-                    plt.imshow(array_r)
-                    plt.show()
-#############################################################################################
-## Collect the array
-                    atoms = np.save('H:/5.Script/14.Machine_learning/1.Polarization/DP_array_{}_{}_{}_{}_{}.cif'.format(i * 0.5,0.5 * j,k,l,m),array_r)
-                    # del array, probe, measurement_np, array_r, atoms, test,potential,new_size,measurement,scan_width,gridscan,detector
-                    # import gc
-                    # gc.collect(generation=2)
+                    np.save('output/DP_array_{}_{}_{}_{}_{}.npy'.format(i * 0.5,0.5 * j,thickness_layer,tilt_angle,tilt_angle_y),measurement_np)
 #############################################################################################
 ## Save the array
