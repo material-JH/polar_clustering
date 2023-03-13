@@ -61,7 +61,7 @@ class Stem:
         self.detector = PixelatedDetector(max_angle=None, resample=False)
 
     def scan(self, batch_size):
-        return stem.probe.scan(self.gridscan, self.detector, self.potential, max_batch=batch_size, pbar=True)
+        return stem.probe.scan(self.gridscan, self.detector, self.potential, max_batch=batch_size, pbar=False)
 
 num_Ti = 5
 num_O = 3
@@ -108,8 +108,10 @@ for i in range(3):
                                 test[i, j, :, :] = resize(measurement.array[i, j, :, :], [N, new_size])[
                                                    int((N - new_size) / 2):int((N - new_size) / 2) + new_size, :]
 
-                    measurement_np = crop_center(test, [55, 55])
+                    measurement_np = crop_center(test, [55 * 2, 55 * 2])
 
                     np.save('output/DP_array_{}_{}_{}_{}_{}.npy'.format(i * 0.5,0.5 * j,thickness_layer,tilt_angle,tilt_angle_y),measurement_np)
+                    
+                    print()
 #############################################################################################
 ## Save the array

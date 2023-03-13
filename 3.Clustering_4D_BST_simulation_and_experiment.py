@@ -2,8 +2,6 @@
 import numpy as np
 import matplotlib.pyplot as plt
 import umap
-from sklearn.cluster import KMeans
-from sklearn.cluster import MiniBatchKMeans
 from sklearn.cluster import SpectralClustering
 from collections import Counter
 from matplotlib import cm
@@ -12,77 +10,39 @@ import imutils as imutils
 import matplotlib
 from scipy.spatial.distance import pdist, squareform
 from skimage.transform import resize
+from main import *
+import os
 
-
-def one_round_clustering(n_clusters, manifold_data):
-    if np.shape(manifold_data)[1] > 1000:
-        manifold_clustering_result = MiniBatchKMeans(n_clusters=n_clusters).fit(manifold_data)
-    else:
-        manifold_clustering_result = KMeans(n_clusters=n_clusters).fit(manifold_data)
-
-    labels = manifold_clustering_result.labels_ + 1
-
-    return labels, manifold_clustering_result.cluster_centers_
-
-
-def get_rotation_matrix(i_v, unit=None):
-    # From http://www.j3d.org/matrix_faq/matrfaq_latest.html#Q38
-    if unit is None:
-        unit = [1.0, 0.0, 0.0]
-    # Normalize vector length
-    i_v /= np.linalg.norm(i_v)
-
-    # Get axis
-    uvw = np.cross(i_v, unit)
-
-    # compute trig values - no need to go through arccos and back
-    rcos = np.dot(i_v, unit)
-    rsin = np.linalg.norm(uvw)
-
-    # normalize and unpack axis
-    if not np.isclose(rsin, 0):
-        uvw /= rsin
-    u, v, w = uvw
-
-    # Compute rotation matrix - re-expressed to show structure
-    return (
-            rcos * np.eye(3) +
-            rsin * np.array([
-        [0, -w, v],
-        [w, 0, -u],
-        [-v, u, 0]
-    ]) +
-            (1.0 - rcos) * uvw[:, None] * uvw[None, :]
-    )
-
-def NormalizeData(data):
-    return (data - np.min(data)) / (np.max(data) - np.min(data))
-
-# Total data pic
-# p = 'D:/1.Experimental_data/7.삼성종기원과제_2022/2022_07_06_machine_learning_raw_data/npy_file/Ru/set1/bin_4/Ru_set1_0V_bin4.npy'
-# orig = np.load(p)
-# tem = np.sum(np.sum(orig, axis=1), axis=0)
-# fig = plt.figure(figsize=(16, 30))
-# ax = fig.add_subplot()
-# ax.imshow(tem)
-#orig = np.rollaxis(np.rollaxis(orig, 2), 3, 1)
+import hyperspy.api as hs
 
 # read voltage data
 data = []
-for i in range(-2, 3):
-    path_3 = 'D:/1.Experimental_data/7.삼성종기원과제_2022/2022_08_20_SRO_4d/4D_data/set4/'
-    image_name_3 = '{}_SRO_set4_crop_d.npy'.format(i)
-    data.append(np.load(path_3 + image_name_3))
+os.chdir(r"/mnt/c/Users/em3-user/Documents/set4")
+for i in os.listdir():
+    # path = r"C:/Users/em3-user/Documents/set1/-2.dm4"
+    data.append(hs.load(i).data)
 data = np.stack(data, axis=0)
 
+np_sum = np.sum(data, axis=(1, 2))
 
+fig, axes = plt.subplots(nrows=1, ncols=5, figsize=(10, 6))
+
+# Plot each image on a subplot
+for i in range(5):
+    axes[i].imshow(np_sum[i])
+
+for ax in axes.flatten():
+    ax.axis('off')
+    
+plt.show()
+#%%
 # read simulated data
 data_2 = []
 for i in range(0,31):
     displacement_number = int(i*0.1)
-    path_3 = 'H:/5.Script/10.STEM_simulation/1.Polarization_mapping/2.result/3.CBED_thickness_check/'
+    path = 'H:/5.Script/10.STEM_simulation/1.Polarization_mapping/2.result/3.CBED_thickness_check/'
     image_name_3 ='600a_{}.tif'.format(displacement_number,i)
-    data_2.append(np.array(Image.open(path_3+image_name_3)))
+    data_2.append(np.array(Image.open(path+image_name_3)))
 data_2 = np.stack(data_2, axis=0)
 data_reshape = np.reshape(data_2,(31,1,1283,1283))
 
@@ -103,35 +63,27 @@ data_reshape = np.reshape(data_2,(31,1,1283,1283))
 
 ######################################################################################
 ## 2. Cropping the image
-
+#%%
 angle_1 = 90
 angle_2 = -90
 mask = 150
+# data_reshape = np.reshape(data,(31,1,1283,1283))
 
 img_pixel = np.zeros((mask,mask))
-data_rotate= np.zeros((31,2,mask,mask))
+data_rotate= np.zeros((38,10,mask,mask))
 
-first_mask_coordi = (569,244)
-second_mask_coordi = (569,893)
+first_mask_coordi = (569,244) # 0-20 disc position
+second_mask_coordi = (569,893) # 020 disc position
+data_crop = []
 
-lu, ru, tu, bu = [first_mask_coordi[0], first_mask_coordi[0]+mask, first_mask_coordi[1], first_mask_coordi[1]+mask]  # 0-20 disc position
-#lu, ru, tu, bu = [second_mask_coordi[0], second_mask_coordi[0]+mask, second_mask_coordi[1], second_mask_coordi[1]+mask]  # 020 disc position
-data_crop= data_reshape[:, :, lu:ru, tu:bu]
-
-for i in range(31):
-    img_pixel[:][:] = data_crop[i][0][:][:]
-    img_rot = imutils.rotate(img_pixel,angle_1)
-    data_rotate[i][0] = img_rot
-
-lu, ru, tu, bu = [second_mask_coordi[0], second_mask_coordi[0]+mask, second_mask_coordi[1], second_mask_coordi[1]+mask]  # 020 disc position
-#lu, ru, tu, bu = [second_mask_coordi[0], second_mask_coordi[0]+mask, second_mask_coordi[1], second_mask_coordi[1]+mask]  # 020 disc position
-data_crop= data_reshape[:, :, lu:ru, tu:bu]
-
-for i in range(31):
-    img_pixel[:][:] = data_crop[i][0][:][:]
-    img_rot = imutils.rotate(img_pixel,angle_2)
-    data_rotate[i][1] = img_rot
-
+for j, mask_coordi in zip([angle_1, angle_2], [first_mask_coordi, second_mask_coordi]):
+    lu, ru, tu, bu = [mask_coordi[0], mask_coordi[0]+mask, mask_coordi[1], mask_coordi[1]+mask]  
+    data_crop.append(data[0][lu:ru, tu:bu, :, :])
+    # for i in range(31):
+    #     img_pixel[:][:] = data_crop[i][0][:][:]
+    #     img_rot = imutils.rotate(img_pixel,j)
+    #     data_rotate[i][j] = img_rot
+#%%
 data_rotate_rescale = np.zeros((31,2,50,50))
 for i in range(31):
     for j in range(2):
@@ -140,13 +92,15 @@ for i in range(31):
         data_rotate_rescale[i][j] = img_a
 
 data_2 = data_rotate_rescale
-
+#%%
 for i in range(5):
     for j in range(38):
         for k in range(10):
-            data_1_crop = data[i,j,k,:,:]
+            data_1_crop = data[i,:,:,j,k]
             data_1_crop = NormalizeData(data_1_crop)
-            data[i,j,k,:,:] = data_1_crop
+            data[i,:,:,j,k] = data_1_crop
+
+#%%
 
 for i in range(31):
     for j in range(2):
@@ -158,7 +112,14 @@ plt.figure()
 plt.imshow(data[0,10,5],vmin = 0 , vmax = 1)
 plt.figure()
 plt.imshow(data_2[15,1],vmin = 0 , vmax = 1)
+#%%
 
+import seaborn as sns
+reshaping = data.swapaxes(1, 3).swapaxes(2, 4)
+reshaping = reshaping[0].reshape((-1, 512, 512))
+print(reshaping.shape)
+sns.histplot(reshaping, kde=True, multiple='stack')
+plt.show()
 #%%
 
 ndata, x, y, kx, ky = np.shape(data)
@@ -188,10 +149,8 @@ ax.scatter(xy[:,0],xy[:,1],xy[:,2])
 
 labels, _ = one_round_clustering(3, xy)
 
-labels_1 = labels[0:1900]
-labels_2 = labels[1900:1962]
-labels_1 = labels_1.reshape(5, 38, 10)
-labels_2 = labels_2.reshape(31, 2)
+labels_1 = labels[0:1900].reshape(5, 38, 10)
+labels_2 = labels[1900:1962].reshape(31, 2)
 
 plt.figure()
 plt.imshow(labels_1[0])
