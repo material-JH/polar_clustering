@@ -44,4 +44,4 @@ def get_rotation_matrix(i_v, unit=None):
     )
 
 def NormalizeData(data):
-    return (data - np.min(data)) / (np.max(data) - np.min(data))
+    return (data - np.mean(data)) / np.std(data)

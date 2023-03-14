@@ -24,21 +24,56 @@ data = np.stack(data, axis=0)
 
 data = data.swapaxes(1, 3).swapaxes(2, 4)
 #%%
+angle = 82
 nrx, nry, nkx, nky = data.shape[1:]
 
-crop_amount = nkx // 5 * 2
-crop_dat = np.zeros((*data.shape[:3], nkx - 2 * crop_amount, nky // 2))
-
+crop_amount = int(nkx / 3.8)
+crop_dat = np.zeros((*data.shape[:3], nkx - 2 * crop_amount, nkx - 2 * crop_amount))
 for i in range(data.shape[0]):
     for j in range(nrx):
         for k in range(nry):
-            crop_dat[i, j, k] = NormalizeData(data[i, j, k, 
+            rotate = imutils.rotate(data[i, j, k], angle)
+            crop_dat[i, j, k] = (rotate[ 
                                  crop_amount:nkx - crop_amount,
                                  crop_amount:nkx - crop_amount])
 
 print(crop_dat.shape)
 #%%
+pos = [48, 130]
+# pos = [3, 84]
+size = 50
+crop_dat2 = np.zeros((*crop_dat.shape[:3], size, size))
+for i in range(crop_dat.shape[0]):
+    for j in range(nrx):
+        for k in range(nry):
+            crop_dat2[i, j, k] = crop_dat[i, j, k][pos[0]:pos[0] + size, 
+                                         pos[1]:pos[1] + size]
+#%%
+for i in range(21, 22):
+    plt.imshow(crop_dat[0, i, 5])
+    plt.show()
+    plt.imshow(crop_dat2[0, i, 5])
+    plt.show()
 
+#%%
+
+fig, axes = plt.subplots(nrows=10, ncols=4, figsize=(4, 10))
+
+# Plot each image on a subplot
+for i in range(10):
+    for j in range(4):
+        axes[i, j].imshow(NormalizeData(crop_dat2[0, i * 4, j * 2]))
+
+for ax in axes.flatten():
+    ax.axis('off')
+    
+plt.show()
+#%%
+
+plt.imshow(crop_dat2[0].sum(axis=(2, 3)))
+plt.axis('off')
+
+#%%
 crop_dat_r = crop_dat.reshape(-1, nkx // 2, nky // 2)
 print(crop_dat_r.shape)
 #%%
@@ -72,7 +107,24 @@ plt.show()
 # %%
 os.chdir('/mnt/c/Users/em3-user/Documents/GitHub/polar_clustering/output')
 
-data = []
+data2 = []
 for i in os.listdir():
-    data.append(np.load(i))
+    data2.append(np.load(i))
+# %%
+
+
+plt.imshow(data2[0][0,0])
+
+
+fig, axes = plt.subplots(nrows=3, ncols=2, figsize=(4, 10))
+
+# Plot each image on a subplot
+for i in range(3):
+    for j in range(2):
+        axes[i, j].imshow(NormalizeData(data2[i * j][0,0]))
+
+for ax in axes.flatten():
+    ax.axis('off')
+    
+plt.show()
 # %%

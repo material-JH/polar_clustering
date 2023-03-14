@@ -78,40 +78,43 @@ repeat_layer = 50
 stem = Stem('cpu')
 ##########################################################################################################
 ## Ratio between the displacement of Ti and O
-for i in range(3):
-    for j in range(3):
-        for thickness_layer in range(148, 160, 3):
-            for tilt_angle in np.linspace(-0.05, 0, 3):
-                for tilt_angle_y in np.linspace(-0.05, 0.05, 5):
+import os
+for name in os.listdir('cif')[:30:5]:
+    print(name)
+    for thickness_layer in range(148, 160, 20):
+        for tilt_angle in np.linspace(-0.05, 0, 1):
+            for tilt_angle_y in np.linspace(-0.05, 0.05, 1):
 
-                    stem.set_atom('cif/BST_down_{}_{}.cif'.format(1.0*i,1.0*j))
-                    stem.repeat_cell((repeat_layer, repeat_layer, thickness_layer))
-                    stem.rotate_atom(tilt_angle, 'x')
-                    stem.rotate_atom(tilt_angle_y,'y')
-                    stem.generate_pot(N, lattice_constant/2)
-                    
-                    stem.set_probe()
-                    stem.set_scan((2 * 10, 2 * 10))
+                stem.set_atom(f'cif/{name}')
+                stem.repeat_cell((repeat_layer, repeat_layer, thickness_layer))
+                stem.rotate_atom(tilt_angle, 'x')
+                stem.rotate_atom(tilt_angle_y,'y')
+                stem.generate_pot(N, lattice_constant/2)
+                
+                stem.set_probe()
+                stem.set_scan((2 * 10, 2 * 10))
 
-                    measurement = stem.scan(16)
+                measurement = stem.scan(16)
 
-                    new_size = min(int(N * measurement.calibrations[2].sampling / measurement.calibrations[3].sampling),
-                                   int(N * measurement.calibrations[3].sampling / measurement.calibrations[2].sampling))
+                new_size = min(int(N * measurement.calibrations[2].sampling / measurement.calibrations[3].sampling),
+                                int(N * measurement.calibrations[3].sampling / measurement.calibrations[2].sampling))
 
-                    test = np.zeros([1, 1, new_size, new_size])
-                    for i in range(measurement.array.shape[0]):
-                        for j in range(measurement.array.shape[1]):
-                            if measurement.calibrations[2].sampling < measurement.calibrations[3].sampling:
-                                test[i, j, :, :] = resize(measurement.array[i, j, :, :], [new_size, N])[:,
-                                                   int((N - new_size) / 2):int((N - new_size) / 2) + new_size]
-                            else:
-                                test[i, j, :, :] = resize(measurement.array[i, j, :, :], [N, new_size])[
-                                                   int((N - new_size) / 2):int((N - new_size) / 2) + new_size, :]
+                test = np.zeros([1, 1, new_size, new_size])
+                for i in range(measurement.array.shape[0]):
+                    for j in range(measurement.array.shape[1]):
+                        if measurement.calibrations[2].sampling < measurement.calibrations[3].sampling:
+                            test[i, j, :, :] = resize(measurement.array[i, j, :, :], [new_size, N])[:,
+                                                int((N - new_size) / 2):int((N - new_size) / 2) + new_size]
+                        else:
+                            test[i, j, :, :] = resize(measurement.array[i, j, :, :], [N, new_size])[
+                                                int((N - new_size) / 2):int((N - new_size) / 2) + new_size, :]
 
-                    measurement_np = crop_center(test, [55 * 2, 55 * 2])
+                measurement_np = crop_center(test, [55 * 3, 55 * 3])
 
-                    np.save('output/DP_array_{}_{}_{}_{}_{}.npy'.format(i * 0.5,0.5 * j,thickness_layer,tilt_angle,tilt_angle_y),measurement_np)
-                    
-                    print()
+                np.save('output/DP_array_{}_{}_{}_{}.npy'.format(name[9:16],thickness_layer,tilt_angle,tilt_angle_y),measurement_np)
+                
+                print()
 #############################################################################################
 ## Save the array
+
+# %%
