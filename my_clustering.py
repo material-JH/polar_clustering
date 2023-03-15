@@ -12,7 +12,7 @@ from skimage.transform import resize
 from main import *
 import hyperspy.api as hs
 
-# matplotlib.use('Qt5Agg')
+# matplotlib.use('QtAgg')
 
 data = []
 os.chdir(r"/mnt/c/Users/em3-user/Documents/set4")
@@ -20,27 +20,26 @@ for i in os.listdir():
     # path = r"C:/Users/em3-user/Documents/set1/-2.dm4"
     data.append(hs.load(i).data)
 data = np.stack(data, axis=0)
-#%%
-
 data = data.swapaxes(1, 3).swapaxes(2, 4)
 #%%
 angle = 82
 nrx, nry, nkx, nky = data.shape[1:]
 
 crop_amount = int(nkx / 3.8)
+shift_x = -2
+shift_y = -12
 crop_dat = np.zeros((*data.shape[:3], nkx - 2 * crop_amount, nkx - 2 * crop_amount))
 for i in range(data.shape[0]):
     for j in range(nrx):
         for k in range(nry):
             rotate = imutils.rotate(data[i, j, k], angle)
             crop_dat[i, j, k] = (rotate[ 
-                                 crop_amount:nkx - crop_amount,
-                                 crop_amount:nkx - crop_amount])
-
-print(crop_dat.shape)
+                                 crop_amount + shift_x:nkx - crop_amount + shift_x,
+                                 crop_amount + shift_y:nkx - crop_amount + shift_y])
 #%%
-pos = [48, 130]
-# pos = [3, 84]
+print(crop_dat.shape)
+# pos = [53 + shift_x, 154 + shift_y]
+pos = [5, 96]
 size = 50
 crop_dat2 = np.zeros((*crop_dat.shape[:3], size, size))
 for i in range(crop_dat.shape[0]):
@@ -48,11 +47,14 @@ for i in range(crop_dat.shape[0]):
         for k in range(nry):
             crop_dat2[i, j, k] = crop_dat[i, j, k][pos[0]:pos[0] + size, 
                                          pos[1]:pos[1] + size]
-#%%
-for i in range(21, 22):
-    plt.imshow(crop_dat[0, i, 5])
+for i in range(0, 30, 5):
+    # plt.imshow(crop_dat[0, i, 5])
+    # plt.plot([crop_dat.shape[3] / 2] * 2 , [0, crop_dat.shape[3]])
+    # plt.plot([0, crop_dat.shape[3]], [crop_dat.shape[3] / 2] * 2 )
+    # plt.axis('off')
     plt.show()
     plt.imshow(crop_dat2[0, i, 5])
+    plt.axis('off')
     plt.show()
 
 #%%
