@@ -106,8 +106,6 @@ def get_emb_lbl(data,n_components=2, n_neighbors=15, min_dist=0.1):
     # Assuming `embedding` contains the reduced dimensional representation of your data
     kmeans = KMeans(n_clusters=2)
     kmeans.fit(embedding)
-
     # Assign cluster labels to each data point
     labels = kmeans.labels_
-    
     return embedding, labels

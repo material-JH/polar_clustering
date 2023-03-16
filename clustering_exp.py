@@ -47,11 +47,19 @@ n_neighbors = 15
 n_components = 2
 min_dist = 0.2
 
-embedding, labels = get_emb_lbl(data_post_011)
+embedding, labels = get_emb_lbl(data_post_002)
+
+
+#%%
+
+from sklearn.cluster import SpectralClustering
+spectral = SpectralClustering(n_clusters=3, affinity='rbf', assign_labels='kmeans')
+labels = spectral.fit_predict(embedding)
 # embedding, labels = get_emb_lbl(data_post, n_neighbors, n_components, min_dist)
 
 plt.scatter(embedding[labels == 0, 0], embedding[labels == 0, 1], c='blue', label='Cluster 1')
 plt.scatter(embedding[labels == 1, 0], embedding[labels == 1, 1], c='red', label='Cluster 2')
+plt.scatter(embedding[labels == 2, 0], embedding[labels == 2, 1], c='green', label='Cluster 3')
 
 plt.title('UMAP + K-means clustering')
 plt.legend()
@@ -64,14 +72,21 @@ plt.show()
 
 #%%
 xyz = reduce((lambda x, y: x * y), data.shape[:3])
-sel_dat = data_post_011_norm.reshape(xyz , -1)[labels == 1]
-embedding2, labels2 = get_emb_lbl(sel_dat)
+sel_dat = data_post_011_norm.reshape(xyz , -1)[labels == 0]
+reducer = umap.UMAP()
+embedding2 = reducer.fit_transform(sel_dat)
+spectral.n_clusters = 2
+labels2 = spectral.fit_predict(embedding2)
+plt.scatter(embedding2[labels2 == 0, 0], embedding2[labels2 == 0, 1], c='blue', label='Cluster 1')
+plt.scatter(embedding2[labels2 == 1, 0], embedding2[labels2 == 1, 1], c='red', label='Cluster 2')
+
+# embedding2, labels2 = get_emb_lbl(sel_dat, n_components, n_neighbors, min_dist)
 #%%
 new_lbl = []
 n = 0
 for l in labels:
-    if l == 1:
-        new_lbl.append(labels2[n] + 1)
+    if l == 0:
+        new_lbl.append(labels2[n] * 3)
         n += 1
     else:
         new_lbl.append(l)
