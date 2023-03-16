@@ -95,10 +95,10 @@ import umap
 from functools import reduce
 
 
-def get_emb_lbl(data,n_components, n_neighbors, min_dist):
-    reducer = umap.UMAP(n_components=2,
-                        n_neighbors = 150,
-                        min_dist = 0.2)
+def get_emb_lbl(data,n_components=2, n_neighbors=15, min_dist=0.1):
+    reducer = umap.UMAP(n_components= n_components,
+                        n_neighbors = n_neighbors,
+                        min_dist = min_dist)
 
     xyz = reduce((lambda x, y: x * y), data.shape[:3])
 
