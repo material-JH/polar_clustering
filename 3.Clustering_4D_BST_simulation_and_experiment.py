@@ -97,7 +97,7 @@ for i in range(5):
     for j in range(38):
         for k in range(10):
             data_1_crop = data[i,:,:,j,k]
-            data_1_crop = NormalizeData(data_1_crop)
+            data_1_crop = normalize_Data(data_1_crop)
             data[i,:,:,j,k] = data_1_crop
 
 #%%
@@ -105,7 +105,7 @@ for i in range(5):
 for i in range(31):
     for j in range(2):
         data_2_crop = data_2[i, j, :, :]
-        data_2_crop = NormalizeData(data_2_crop)
+        data_2_crop = normalize_Data(data_2_crop)
         data_2[i, j, :, :] = data_2_crop
 
 plt.figure()
