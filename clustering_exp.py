@@ -6,36 +6,18 @@ from scipy.spatial.distance import pdist, squareform
 from skimage.transform import resize
 from main import *
 
-def plot_vertical(data):
-    
-    for i in range(0, 40, 5):
-        fig, axs = plt.subplots(nrows=1, ncols=5, figsize=(8, 4))
-        for j in range(5):
-            axs[j].imshow(data[j, i, 5])
-            axs[j].axis('off')
-        plt.show()
-
-def center_of_mass_position(arr):
-    rows, cols = arr.shape
-    total_mass = arr.sum()
-    if total_mass == 0:
-        return None
-    y_indices, x_indices = np.indices((rows, cols))
-    x_c = int((arr * x_indices).sum() / total_mass)
-    y_c = int((arr * y_indices).sum() / total_mass)
-    return (y_c, x_c)
 # matplotlib.use('QtAgg')
 #%%
-data = load_data(r"/mnt/c/Users/em3-user/Documents/set4")
+data = load_data(r"/mnt/c/Users/em3-user/Documents/set2")
 #%%
 data_post = fn_on_resized(data, imutils.rotate, 81)
+
 com = fn_on_resized(data_post, center_of_mass_position)
 com = list(map(int, np.sum(com, axis=(0, 1, 2, 3)) / reduce(lambda x, y: x * y, com.shape[:3])))
 data_post = shift_n_crop(data_post, int(data.shape[-1] / 3.8),
-                        shift_x = com[0] - 256,
+                        shift_x = com[0] - 256 - 5,
                         shift_y = com[1] - 256)
 
-#%%
 disk_pos_002 = [5, 102]
 disk_pos_011 = [53, 145]
 data_post_002 = crop(data_post, 50, disk_pos_002)
@@ -43,13 +25,27 @@ data_post_011 = crop(data_post, 50, disk_pos_011)
 data_post_002_norm = normalize_Data(data_post_002)
 data_post_011_norm = normalize_Data(data_post_011)
 #%%
+plot_vertical(data_post_002)
+#%%
 n_neighbors = 15
 n_components = 2
 min_dist = 0.2
 
-embedding, labels = get_emb_lbl(data_post_002)
+simulations = np.load('output/disk.npy')
 
+simulations = normalize_Data(simulations)[:,:,:,0,0]
+plt.imshow(simulations[0,:,:])
+#%%
+# embedding, labels = get_emb_lbl_real(data_post_002)
+xyz = reduce((lambda x, y: x * y), data_post_002.shape[:3])
 
+new = np.concatenate([data_post_011_norm.reshape(xyz , -1), simulations.reshape(2, -1)], axis=0)
+#%%
+embedding, labels = get_emb_lbl(new)
+
+#%%
+plt.scatter(embedding[:1900, 0], embedding[:1900, 1], c='blue', label='Cluster 1')
+plt.scatter(embedding[1900:, 0], embedding[1900:, 1], c='red', label='Cluster 2')
 #%%
 
 from sklearn.cluster import SpectralClustering
@@ -64,8 +60,11 @@ plt.scatter(embedding[labels == 2, 0], embedding[labels == 2, 1], c='green', lab
 plt.title('UMAP + K-means clustering')
 plt.legend()
 plt.show()
+#%%
 fig, axs = plt.subplots(nrows=1, ncols=5, figsize=(8, 4))
-for n, i in enumerate(labels.reshape(data_post_002.shape[:3])):
+for n, i in enumerate(labels[:1900].reshape(data_post_002.shape[:3])):
+    i = np.concatenate([i, [list([labels[1900]]) * 10]], axis=0)
+    i = np.concatenate([i, [list([labels[1901]]) * 10]], axis=0)
     axs[n].imshow(i)
     axs[n].axis('off')
 plt.show()

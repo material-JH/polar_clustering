@@ -1,9 +1,29 @@
 import imutils
 import hyperspy.api as hs
 import os
-from sklearn.cluster import KMeans
+from sklearn.cluster import KMeans, SpectralClustering
 from sklearn.cluster import MiniBatchKMeans
 import numpy as np
+import matplotlib.pyplot as plt
+
+def plot_vertical(data):
+    
+    for i in range(0, 40, 5):
+        fig, axs = plt.subplots(nrows=1, ncols=5, figsize=(8, 4))
+        for j in range(5):
+            axs[j].imshow(data[j, i, 5])
+            axs[j].axis('off')
+        plt.show()
+
+def center_of_mass_position(arr):
+    rows, cols = arr.shape
+    total_mass = arr.sum()
+    if total_mass == 0:
+        return None
+    y_indices, x_indices = np.indices((rows, cols))
+    x_c = int((arr * x_indices).sum() / total_mass)
+    y_c = int((arr * y_indices).sum() / total_mass)
+    return (y_c, x_c)
 
 def one_round_clustering(n_clusters, manifold_data):
     if np.shape(manifold_data)[1] > 1000:
@@ -95,7 +115,7 @@ import umap
 from functools import reduce
 
 
-def get_emb_lbl(data,n_components=2, n_neighbors=15, min_dist=0.1):
+def get_emb_lbl_real(data,n_components=2, n_neighbors=15, min_dist=0.1):
     reducer = umap.UMAP(n_components= n_components,
                         n_neighbors = n_neighbors,
                         min_dist = min_dist)
@@ -108,4 +128,16 @@ def get_emb_lbl(data,n_components=2, n_neighbors=15, min_dist=0.1):
     kmeans.fit(embedding)
     # Assign cluster labels to each data point
     labels = kmeans.labels_
+    return embedding, labels
+
+def get_emb_lbl(data,n_components=2, n_neighbors=15, min_dist=0.1, n_clusters=2):
+    reducer = umap.UMAP(n_components= n_components,
+                        n_neighbors = n_neighbors,
+                        min_dist = min_dist)
+
+    embedding = reducer.fit_transform(data)
+    # Assuming `embedding` contains the reduced dimensional representation of your data
+    spectral = SpectralClustering(n_clusters=n_clusters, affinity='rbf', assign_labels='kmeans')
+    labels = spectral.fit_predict(embedding)
+
     return embedding, labels

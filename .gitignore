@@ -4,3 +4,5 @@ Keeyong/
 __pycache__/
 
 *.npy
+
+*.cif
