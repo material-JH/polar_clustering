@@ -8,7 +8,7 @@ from main import *
 
 # matplotlib.use('QtAgg')
 #%%
-data = load_data(r"/mnt/c/Users/em3-user/Documents/set2")
+data = load_data(r"/mnt/c/Users/em3-user/Documents/set2_SRO")
 #%%
 data_post = fn_on_resized(data, imutils.rotate, 81)
 
@@ -25,13 +25,17 @@ data_post_011 = crop(data_post, 50, disk_pos_011)
 data_post_002_norm = normalize_Data(data_post_002)
 data_post_011_norm = normalize_Data(data_post_011)
 #%%
-plot_vertical(data_post_002)
+n = 3
+data_post_011_norm = fn_on_resized(data_post_011_norm, cv2.GaussianBlur, (n, n), 0)
+
+#%%
+plot_vertical(data_post_011_norm)
 #%%
 n_neighbors = 15
 n_components = 2
 min_dist = 0.2
 
-simulations = np.load('output/disk.npy')
+simulations = np.load('output/disk_011.npy')
 
 simulations = normalize_Data(simulations)[:,:,:,0,0]
 plt.imshow(simulations[0,:,:])
@@ -39,24 +43,28 @@ plt.imshow(simulations[0,:,:])
 # embedding, labels = get_emb_lbl_real(data_post_002)
 xyz = reduce((lambda x, y: x * y), data_post_002.shape[:3])
 
-new = np.concatenate([data_post_011_norm.reshape(xyz , -1), simulations.reshape(2, -1)], axis=0)
+new = np.concatenate([data_post_011_norm.reshape(xyz , -1), simulations.reshape(len(simulations), -1)], axis=0)
 #%%
 embedding, labels = get_emb_lbl(new)
 
 #%%
 plt.scatter(embedding[:1900, 0], embedding[:1900, 1], c='blue', label='Cluster 1')
-plt.scatter(embedding[1900:, 0], embedding[1900:, 1], c='red', label='Cluster 2')
 #%%
 
 from sklearn.cluster import SpectralClustering
-spectral = SpectralClustering(n_clusters=3, affinity='rbf', assign_labels='kmeans')
+spectral = SpectralClustering(n_clusters=5, affinity='rbf', assign_labels='kmeans')
 labels = spectral.fit_predict(embedding)
 # embedding, labels = get_emb_lbl(data_post, n_neighbors, n_components, min_dist)
+simLen = len(labels) - 1900
+plt.scatter(embedding[labels == 0, 0], embedding[labels == 0, 1], alpha=0.3, c='purple', label='Cluster 1')
+plt.scatter(embedding[labels == 1, 0], embedding[labels == 1, 1], alpha=0.3, c='#30678d', label='Cluster 2')
+plt.scatter(embedding[labels == 2, 0], embedding[labels == 2, 1], alpha=0.3, c='#35b778', label='Cluster 3')
+plt.scatter(embedding[labels == 3, 0], embedding[labels == 3, 1], alpha=0.3, c='yellow', label='Cluster 4')
+plt.scatter(embedding[labels == 4, 0], embedding[labels == 4, 1], alpha=0.3, c='green', label='Cluster 5')
+plt.scatter(embedding[1900:-simLen // 2, 0], embedding[1900:-simLen // 2, 1], alpha=0.8, c='Red', label='dn')
+plt.scatter(embedding[1900 + simLen // 2:, 0], embedding[1900 + simLen // 2:, 1], alpha=0.8, c='Blue', label='up')
 
-plt.scatter(embedding[labels == 0, 0], embedding[labels == 0, 1], c='blue', label='Cluster 1')
-plt.scatter(embedding[labels == 1, 0], embedding[labels == 1, 1], c='red', label='Cluster 2')
-plt.scatter(embedding[labels == 2, 0], embedding[labels == 2, 1], c='green', label='Cluster 3')
-
+# labels[labels == 3] = 2
 plt.title('UMAP + K-means clustering')
 plt.legend()
 plt.show()
@@ -97,4 +105,22 @@ for i, j in zip(lbl_reshape, data.sum(axis=(-1, -2))):
     axs[0].imshow(i)
     axs[1].imshow(j)
     plt.show()
+# %%
+import cv2
+# Convert to grayscale
+# gray = cv2.cvtColor(data_post_002[0,20,0], cv2.COLOR_BGR2GRAY)
+# Apply Gaussian blur to reduce noise
+n = 5
+blur = cv2.GaussianBlur(data_post_011_norm[0,10,0] + 1, (n, n), 0)
+
+blur = cv2.convertScaleAbs(blur)
+data_post_011_norm[0,10,0][center_of_mass_position(blur)] = 1e+1
+plt.imshow(data_post_011_norm[0,10,0])
+
+# print(center_of_mass_position(blur))
+# edges = cv2.Canny(blur, 1, 2)
+# print(center_of_mass_position(edges))
+# edges[center_of_mass_position(edges)] = 1e+2
+# plt.imshow(edges)
+# Display the result
 # %%

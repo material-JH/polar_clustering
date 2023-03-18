@@ -7,13 +7,14 @@ from skimage.transform import resize
 
 arr = []
 for file in os.listdir('output'):
-    if not file.__contains__('array'):
+    if file.__contains__('DP'):
         print(file)
         arr.append(np.load(f'output/{file}'))
 
 for n in range(len(arr)):
     arr[n] = resize(arr[n][0,0],  [r + 30 for r in arr[n][0,0].shape])
-start_pos = [7, 101]
+# start_pos = [7, 101]
+start_pos = [55, 147]
 rad = 50
 
 disk = []
@@ -23,5 +24,5 @@ for n in range(len(arr)):
 center_of_mass_position(disk[0])
 plt.imshow(disk[0])
 # %%
-np.save('output/disk.npy', np.array(disk))
+np.save('output/disk_011.npy', np.array(disk))
 # %%
