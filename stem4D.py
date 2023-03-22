@@ -37,8 +37,11 @@ class Stem:
     def rotate_atom(self, tilt_angle, axis):
         self.atoms.rotate(tilt_angle, axis)
         
-    def set_atom(self, file_path):
+    def set_atom_from_file(self, file_path):
         self.atoms = read(file_path)
+
+    def set_atom(self, atoms):
+        self.atoms = atoms
         
     def repeat_cell(self, rep):
         self.atoms *= rep

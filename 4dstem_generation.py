@@ -1,6 +1,5 @@
 #%%
 from stem4D import *
-from pymatgen.core import Structure
 
 N = 512
 lattice_constant = 3.94513
@@ -8,9 +7,11 @@ repeat_layer = 40
 stem = Stem('cpu')
 ######################
 name = 'POSCAR_REV'
+#%%
 for thickness_layer in range(30, 50, 3):
-    stem.set_atom(f'cif/{name}')
+    stem.set_atom_from_file(f'cif/{name}')
     cell = stem.atoms.cell
+    stem.atoms.get_positions()
     stem.repeat_cell((round(repeat_layer * cell[1,1] / cell[0,0]), repeat_layer, thickness_layer))
     for i in range(2):
         stem.rotate_atom(180, 'z')

@@ -9,7 +9,7 @@ from main import *
 # matplotlib.use('QtAgg')
 #%%
 data = load_data(r"/mnt/c/Users/em3-user/Documents/set2_SRO")
-#%%
+    #%%
 data_post = fn_on_resized(data, imutils.rotate, 81)
 
 com = fn_on_resized(data_post, center_of_mass_position)
@@ -35,7 +35,7 @@ n_neighbors = 15
 n_components = 2
 min_dist = 0.2
 
-simulations = np.load('output/disk_011.npy')
+simulations = np.load('output/disk_002.npy')
 
 simulations = normalize_Data(simulations)[:,:,:,0,0]
 plt.imshow(simulations[0,:,:])
@@ -45,10 +45,23 @@ xyz = reduce((lambda x, y: x * y), data_post_002.shape[:3])
 
 new = np.concatenate([data_post_011_norm.reshape(xyz , -1), simulations.reshape(len(simulations), -1)], axis=0)
 #%%
-embedding, labels = get_emb_lbl(new)
+embedding, labels = get_emb_lbl(simulations.reshape(len(simulations), -1), n_neighbors=15, min_dist=0.1 * 5,)
 
-#%%
-plt.scatter(embedding[:1900, 0], embedding[:1900, 1], c='blue', label='Cluster 1')
+labels = []
+for f in os.listdir('output'):
+    if f.__contains__('DP'):
+        if f.__contains__('-'):
+            labels.append(float(f[-6:-4]))
+        else:
+            labels.append(float(f[-5:-4]))
+
+labels = np.array(labels)
+labels /= max(labels)
+# plt.scatter(embedding[:1900, 0], embedding[:1900, 1], c='blue', label='Cluster 1')
+fig, ax = plt.subplots()
+scatter = ax.scatter(embedding[:, 0], embedding[:, 1], c=labels, cmap='bwr', vmin=-1, vmax=1)
+cbar = plt.colorbar(scatter)
+# plt.scatter(embedding[labels > 0, 0], embedding[labels > 0, 1], alpha=labels[labels > 0], c='red', label='Cluster 2')
 #%%
 
 from sklearn.cluster import SpectralClustering
