@@ -54,7 +54,6 @@ for n, atoms in enumerate(atoms_list[::20]):
 import glob
 import os
 for f in glob.glob('output/*'):
-    print(f)
     if f.__contains__('DP'):
         os.remove(f)
 # %%
