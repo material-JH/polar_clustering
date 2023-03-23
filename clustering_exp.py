@@ -5,11 +5,12 @@ import matplotlib
 from scipy.spatial.distance import pdist, squareform
 from skimage.transform import resize
 from main import *
+import cv2
 
 # matplotlib.use('QtAgg')
 #%%
-data = load_data(r"/mnt/c/Users/em3-user/Documents/set2_SRO")
-    #%%
+data = load_data(r"/mnt/c/Users/em3-user/Documents/set4_Ru")
+#%%
 data_post = fn_on_resized(data, imutils.rotate, 81)
 
 com = fn_on_resized(data_post, center_of_mass_position)
@@ -35,7 +36,7 @@ n_neighbors = 15
 n_components = 2
 min_dist = 0.2
 
-simulations = np.load('output/disk_002.npy')
+simulations = np.load('output/disk_011.npy')
 
 simulations = normalize_Data(simulations)[:,:,:,0,0]
 plt.imshow(simulations[0,:,:])
@@ -45,7 +46,12 @@ xyz = reduce((lambda x, y: x * y), data_post_002.shape[:3])
 
 new = np.concatenate([data_post_011_norm.reshape(xyz , -1), simulations.reshape(len(simulations), -1)], axis=0)
 #%%
-embedding, labels = get_emb_lbl(simulations.reshape(len(simulations), -1), n_neighbors=15, min_dist=0.1 * 5,)
+# embedding, labels = get_emb_lbl(simulations.reshape(len(simulations), -1), n_neighbors=15, min_dist=0.1 * 5,)
+embedding, labels = get_emb_lbl(new, n_neighbors=15, min_dist=0.1)
+
+plt.scatter(embedding[:xyz, 0], embedding[:xyz, 1])
+plt.scatter(embedding[xyz:, 0], embedding[xyz:, 1])
+#%%
 
 labels = []
 for f in os.listdir('output'):
@@ -68,14 +74,15 @@ from sklearn.cluster import SpectralClustering
 spectral = SpectralClustering(n_clusters=5, affinity='rbf', assign_labels='kmeans')
 labels = spectral.fit_predict(embedding)
 # embedding, labels = get_emb_lbl(data_post, n_neighbors, n_components, min_dist)
-simLen = len(labels) - 1900
-plt.scatter(embedding[labels == 0, 0], embedding[labels == 0, 1], alpha=0.3, c='purple', label='Cluster 1')
-plt.scatter(embedding[labels == 1, 0], embedding[labels == 1, 1], alpha=0.3, c='#30678d', label='Cluster 2')
-plt.scatter(embedding[labels == 2, 0], embedding[labels == 2, 1], alpha=0.3, c='#35b778', label='Cluster 3')
-plt.scatter(embedding[labels == 3, 0], embedding[labels == 3, 1], alpha=0.3, c='yellow', label='Cluster 4')
-plt.scatter(embedding[labels == 4, 0], embedding[labels == 4, 1], alpha=0.3, c='green', label='Cluster 5')
-plt.scatter(embedding[1900:-simLen // 2, 0], embedding[1900:-simLen // 2, 1], alpha=0.8, c='Red', label='dn')
-plt.scatter(embedding[1900 + simLen // 2:, 0], embedding[1900 + simLen // 2:, 1], alpha=0.8, c='Blue', label='up')
+simLen = len(labels) - xyz
+plt.scatter(embedding[labels == 0, 0], embedding[labels == 0, 1], alpha=0.05, c='purple', label='Cluster 0')
+plt.scatter(embedding[labels == 1, 0], embedding[labels == 1, 1], alpha=0.05, c='#3b528b', label='Cluster 1')
+plt.scatter(embedding[labels == 2, 0], embedding[labels == 2, 1], alpha=0.05, c='#20908c', label='Cluster 2')
+plt.scatter(embedding[labels == 3, 0], embedding[labels == 3, 1], alpha=0.05, c='#5ac864', label='Cluster 3')
+plt.scatter(embedding[labels == 4, 0], embedding[labels == 4, 1], alpha=0.05, c='yellow', label='Cluster 4')
+# plt.scatter(embedding[xyz:, 0], embedding[xyz:, 1], alpha=0.8, c='Red', label='simulation')
+# plt.scatter(embedding[xyz:-simLen // 2, 0], embedding[xyz:-simLen // 2, 1], alpha=0.8,c=range(simLen // 2), cmap='rainbow', label='dn')
+plt.scatter(embedding[xyz + simLen // 2:, 0], embedding[xyz + simLen // 2:, 1], alpha=0.8, c=range(simLen // 2), cmap='rainbow', label='up')
 
 # labels[labels == 3] = 2
 plt.title('UMAP + K-means clustering')
@@ -83,11 +90,14 @@ plt.legend()
 plt.show()
 #%%
 fig, axs = plt.subplots(nrows=1, ncols=5, figsize=(8, 4))
-for n, i in enumerate(labels[:1900].reshape(data_post_002.shape[:3])):
-    i = np.concatenate([i, [list([labels[1900]]) * 10]], axis=0)
-    i = np.concatenate([i, [list([labels[1901]]) * 10]], axis=0)
-    axs[n].imshow(i)
+for n, i in enumerate(labels[:xyz].reshape(data_post_002.shape[:3])):
+    # i = np.concatenate([i, [list([labels[1900]]) * 10]], axis=0)
+    # i = np.concatenate([i, [list([labels[1901]]) * 10]], axis=0)
+    im = axs[n].imshow(i)
     axs[n].axis('off')
+from matplotlib.ticker import MaxNLocator
+cbar1 = fig.colorbar(im, ax=axs[n], format='%d')
+cbar1.ax.yaxis.set_major_locator(MaxNLocator(integer=True))
 plt.show()
 
 #%%

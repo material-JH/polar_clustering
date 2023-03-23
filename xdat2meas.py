@@ -18,15 +18,14 @@ def get_polar(atom:Atoms):
 
 N = 512
 lattice_constant = 3.94513
-repeat_layer = 10
+repeat_layer = 21
 stem = Stem('cpu')
 ######################
 name = 'POSCAR_REV'
 
-thickness_layer = 10
+thickness_layer = 80
 # path = r'/home/jinho93/materials/oxides/perobskite/bsto/mp-1075943/'
-path = r'/home/jinho93/materials/oxides/perobskite/bsto/mp-1075943/isif7/'
-atoms_list = read(path + 'XDATCAR', index=':')
+atoms_list = read('xdat/XDATCAR', index=':')
 
 polar_arr = []
 for atom in atoms_list:
@@ -34,12 +33,12 @@ for atom in atoms_list:
 
 plt.plot(polar_arr)
 #%%
-for n, atoms in enumerate(atoms_list[::20]):
+for n, atoms in enumerate(atoms_list[::50]):
     stem.set_atom(atoms)
     polar = round(get_polar(atoms))
-    print(polar)
     cell = stem.atoms.cell
     stem.repeat_cell((round(repeat_layer * cell[1,1] / cell[0,0]), repeat_layer, thickness_layer))
+    print(cell)
     stem.generate_pot(N, lattice_constant/2)
     stem.set_probe()
     stem.set_scan((2 * 10, 2 * 10))
@@ -48,8 +47,10 @@ for n, atoms in enumerate(atoms_list[::20]):
                     int(N * measurement.calibrations[3].sampling / measurement.calibrations[2].sampling))
     test = squaring(measurement, [1,1], new_size, N)
     measurement_np = crop_center(test, [55 * 4, 55 * 4])
-    np.save(f'output/DP_{thickness_layer}_{n}_{polar}.npy', measurement_np)
-    plt.imshow(measurement_np[0,0])
+    np.save(f'output/DP_{thickness_layer}_{polar}.npy', measurement_np)
+    if n % 10 == 0:
+        plt.imshow(measurement_np[0,0])
+        plt.show()
 # %%
 import glob
 import os

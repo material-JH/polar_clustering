@@ -13,6 +13,7 @@ for thickness_layer in range(30, 50, 3):
     cell = stem.atoms.cell
     stem.atoms.get_positions()
     stem.repeat_cell((round(repeat_layer * cell[1,1] / cell[0,0]), repeat_layer, thickness_layer))
+    print(cell)
     for i in range(2):
         stem.rotate_atom(180, 'z')
         stem.generate_pot(N, lattice_constant/2)
