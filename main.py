@@ -5,6 +5,9 @@ from sklearn.cluster import KMeans, SpectralClustering
 from sklearn.cluster import MiniBatchKMeans
 import numpy as np
 import matplotlib.pyplot as plt
+# import scipy.signal as sig
+import cupyx.scipy.signal as sig
+import cupy as cp
 
 def plot_vertical(data):
     
@@ -15,15 +18,16 @@ def plot_vertical(data):
             axs[j].axis('off')
         plt.show()
 
-def center_of_mass_position(arr):
-    rows, cols = arr.shape
-    total_mass = arr.sum()
-    if total_mass == 0:
-        return None
-    y_indices, x_indices = np.indices((rows, cols))
-    x_c = int((arr * x_indices).sum() / total_mass)
-    y_c = int((arr * y_indices).sum() / total_mass)
-    return (y_c, x_c)
+def get_center(arr, conv):
+    data_gpu = cp.asarray(arr)
+    conv = cp.asarray(conv)
+    # result = sig.convolve2d(data_post_011_norm[0,0,0], circle, mode='same')
+    result = sig.convolve2d(data_gpu, conv, mode='same')
+    # Find the maximum position
+    max_pos = np.unravel_index(np.argmax(result), result.shape)
+    max_pos = list(map(int, max_pos))
+
+    return (max_pos[0], max_pos[1])
 
 def one_round_clustering(n_clusters, manifold_data):
     if np.shape(manifold_data)[1] > 1000:
@@ -84,13 +88,13 @@ def load_data(path):
     
     return data
 
-def _shift_n_crop(data, crop_amount, shift_x, shift_y):
-    nkx = data.shape[0]
-    return data[crop_amount + shift_x:nkx - crop_amount + shift_x,
-                crop_amount + shift_y:nkx - crop_amount + shift_y]
+def _crop_from_center(data, size, com, i):
+    pos_x, pos_y = com[i]
+    return data[pos_y - size // 2: pos_y + size // 2,
+                pos_x - size // 2: pos_x + size // 2]
 
-def shift_n_crop(data, crop_amount, shift_x, shift_y):
-    return fn_on_resized(data, _shift_n_crop, crop_amount, shift_x, shift_y)
+def crop_from_center(data, size, com):
+    return fn_on_resized(data, _crop_from_center, size, com, list=True)
                 
 def _crop(data, size, position):
     return data[position[0]:position[0] + size, 
@@ -99,12 +103,18 @@ def _crop(data, size, position):
 def crop(data, size, position):
     return fn_on_resized(data, _crop, size, position)
 
-def fn_on_resized(data, fn, *args):
+def rotate_by_cen(data, angle, com, i):
+    return imutils.rotate(data, angle, center=com[i])
+
+def fn_on_resized(data, fn, *args, **kwargs):
     shape = data.shape
     tmp = np.reshape(data, (-1, *shape[-2:]))
     output = []
     for i in range(tmp.shape[0]):
-        output.append(fn(tmp[i], *args))
+        if 'list' in kwargs.keys():
+            output.append(fn(tmp[i], *args, i))
+        else:
+            output.append(fn(tmp[i], *args))
         
     output = np.array(output)
     output = np.reshape(output, (*shape[:3], -1))
