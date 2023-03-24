@@ -59,7 +59,7 @@ class Stem:
         self.probe = Probe(energy=300e3, semiangle_cutoff=2.16, defocus=0, focal_spread=20, device=self.device, rolloff=0.)
         self.probe.grid.match(self.potential)
 
-    def set_scan(self, scan_width):
+    def set_scan(self, scan_width, angle=None):
 
         self.gridscan = GridScan(start=[self.potential.extent[0]/2 - scan_width[0] / 2, 
                                         self.potential.extent[1]/2 - scan_width[0] / 2],
@@ -67,7 +67,7 @@ class Stem:
                          self.potential.extent[1]/2 + scan_width[0] / 2],
                     gpts=[1, 1])
 
-        self.detector = PixelatedDetector(max_angle=None, resample=False)
+        self.detector = PixelatedDetector(max_angle=angle, resample=False)
 
     def scan(self, batch_size):
         return self.probe.scan(self.gridscan, self.detector, self.potential, max_batch=batch_size, pbar=False)

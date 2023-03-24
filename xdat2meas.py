@@ -1,4 +1,5 @@
 #%%
+import cv2
 from stem4D import *
 from ase import Atoms
 def get_polar(atom:Atoms):
@@ -18,21 +19,17 @@ def get_polar(atom:Atoms):
 
 N = 512
 lattice_constant = 3.94513
-repeat_layer = 21
-stem = Stem('cpu')
+repeat_layer = 5
+stem = Stem('gpu')
 ######################
-name = 'POSCAR_REV'
-
-thickness_layer = 80
+thickness_layer = 22
 # path = r'/home/jinho93/materials/oxides/perobskite/bsto/mp-1075943/'
-atoms_list = read('xdat/XDATCAR', index=':')
+atoms_list = read('xdat/XDATCAR_large', index=':')
 
 polar_arr = []
 for atom in atoms_list:
     polar_arr.append(get_polar(atom))
 
-plt.plot(polar_arr)
-#%%
 for n, atoms in enumerate(atoms_list[::50]):
     stem.set_atom(atoms)
     polar = round(get_polar(atoms))
@@ -48,13 +45,16 @@ for n, atoms in enumerate(atoms_list[::50]):
     test = squaring(measurement, [1,1], new_size, N)
     measurement_np = crop_center(test, [55 * 4, 55 * 4])
     np.save(f'output/DP_{thickness_layer}_{polar}.npy', measurement_np)
-    if n % 10 == 0:
-        plt.imshow(measurement_np[0,0])
+    if n % 2 == 0:
+        n = 7
+        blur = cv2.GaussianBlur(measurement_np[0,0], (n, n), 0)
+
+        plt.imshow(blur,vmax=np.max(blur) / 2)
         plt.show()
 # %%
 import glob
 import os
 for f in glob.glob('output/*'):
-    if f.__contains__('DP'):
+    if f.__contains__('DP_22'):
         os.remove(f)
 # %%

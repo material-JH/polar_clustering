@@ -5,9 +5,21 @@ from sklearn.cluster import KMeans, SpectralClustering
 from sklearn.cluster import MiniBatchKMeans
 import numpy as np
 import matplotlib.pyplot as plt
+
 # import scipy.signal as sig
-import cupyx.scipy.signal as sig
-import cupy as cp
+try:
+    import cupyx.scipy.signal as sig
+    import cupy as cp
+except:
+    import scipy.signal as sig
+
+def get_circle_conv(size):
+    center = (size // 2, size // 2)  # Center point of the circle
+    x, y = np.meshgrid(np.arange(size), np.arange(size))
+    dist = np.sqrt((x-center[0])**2 + (y-center[1])**2)
+    circle = np.zeros((size, size))
+    circle[dist <= center[0]] = 1
+    return circle
 
 def plot_vertical(data):
     
@@ -19,13 +31,16 @@ def plot_vertical(data):
         plt.show()
 
 def get_center(arr, conv):
-    data_gpu = cp.asarray(arr)
-    conv = cp.asarray(conv)
+    # if cp.cuda.runtime.
+    try:
+        arr = cp.asarray(arr)
+        conv = cp.asarray(conv)
+    except:
+        pass
     # result = sig.convolve2d(data_post_011_norm[0,0,0], circle, mode='same')
-    result = sig.convolve2d(data_gpu, conv, mode='same')
+    result = sig.convolve2d(arr, conv, mode='same')
     # Find the maximum position
-    max_pos = np.unravel_index(np.argmax(result), result.shape)
-    max_pos = list(map(int, max_pos))
+    max_pos = np.unravel_index(np.argmax(result.get()), result.shape)
 
     return (max_pos[0], max_pos[1])
 
@@ -82,7 +97,8 @@ def _normalize_Data(data):
 def load_data(path):
     data = []
     for i in os.listdir(path):
-        data.append(hs.load(os.path.join(path, i)).data)
+        if i.__contains__('dm'):
+            data.append(hs.load(os.path.join(path, i)).data)
     data = np.stack(data, axis=0)
     data = data.swapaxes(1, 3).swapaxes(2, 4)
     
