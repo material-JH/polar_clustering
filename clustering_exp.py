@@ -12,6 +12,7 @@ import cv2
 data = load_data(r"/mnt/c/Users/em3-user/Documents/set1_SRO")
 #%%
 circle = get_circle_conv(40)
+#%%
 com = fn_on_resized(data, get_center, circle)
 com = np.reshape(com, (-1, *com.shape[-1:]))
 com = [list(map(int, c[::-1])) for c in com]
@@ -24,13 +25,32 @@ data_post = crop_from_center(data_post, 250, com)
 disk_pos_002 = [7, 100]
 disk_pos_011 = [55, 145]
 data_post_002 = crop(data_post, 50, disk_pos_002)
-data_post_011 = crop(data_post, 50, disk_pos_011)
+data_post_011 = crop(data_post, 55, disk_pos_011)
 data_post_002_norm = normalize_Data(data_post_002)
 data_post_011_norm = normalize_Data(data_post_011)
-
 n = 5
 data_post_011_norm = fn_on_resized(data_post_011_norm, cv2.GaussianBlur, (n, n), 0)
-plot_vertical(data_post_002_norm)
+
+#%%
+circle = get_circle_conv(42)
+com = fn_on_resized(data_post_011_norm, get_center, circle)
+com = np.reshape(com, (-1, *com.shape[-1:]))
+com = [list(map(int, c[::-1])) for c in com]
+com = np.array(com)
+
+plt.scatter(com[:, 0], com[:, 1])
+#%%
+data_post_011_norm = fn_on_resized(data_post_011_norm, crop_from_center, 42, com)
+
+#%%
+for i in range(0, 30, 3):
+    x, y = get_center(data_post_011_norm[0, i, 5], circle)
+    print(x, y)
+    plt.imshow(crop_from_center(np.array([[[data_post_011_norm[0, i, 5]]]]), 42, [[x, y]])[0,0,0])
+    plt.show()
+
+#%%
+plot_vertical(data_post_011_norm)
 #%%
 n_neighbors = 15
 n_components = 2
@@ -58,7 +78,7 @@ new = np.concatenate([data_post_011_norm.reshape(xyz , -1), simulations.reshape(
 #%%
 # embedding, labels = get_emb_lbl(simulations.reshape(len(simulations), -1), n_neighbors=15, min_dist=0.1 * 5,)
 # embedding, labels = get_emb_lbl(data_post_011_norm.reshape(xyz , -1), n_neighbors=15, min_dist=0.1, n_components=3)
-embedding, labels = get_emb_lbl(new, n_neighbors=15, min_dist=0.1, n_components=2)
+embedding, labels = get_emb_lbl(new, n_neighbors=10, min_dist=0.05, n_components=2)
 #%%
 ax1, ax2 = 0, 1
 plt.scatter(embedding[:xyz, ax1], embedding[:xyz, ax2])
@@ -79,8 +99,8 @@ test=np.zeros(1900)
 for n in range(-len(simulations), 0):
     distances = np.linalg.norm(embedding[:xyz] - embedding[n], axis=1)
     nearest_neighbor_index = np.argmin(distances)
-    print(nearest_neighbor_index)
     fig, ax = plt.subplots(1, 2, figsize=(3,2))
+    fig.suptitle(f'{n} {nearest_neighbor_index}')
     ax[0].imshow(data_post_011_norm.reshape(xyz , 50, 50)[nearest_neighbor_index])
     ax[0].axis('off')
     ax[1].imshow(simulations[n])

@@ -6,11 +6,12 @@ import matplotlib.pyplot as plt
 from skimage.transform import resize
 
 arr = []
+n = 0
 for file in os.listdir('output'):
     # if file.__contains__('DP_dn') or file.__contains__('DP_up'):
     if file.__contains__('DP'):
         arr.append(np.load(f'output/{file}'))
-
+        n += 1
 for n in range(len(arr)):
     # arr[n] = resize(arr[n][0,0],  [r + 150 for r in arr[n][0,0].shape])
     arr[n] = resize(arr[n][0,0],  [r + 50 for r in arr[n][0,0].shape])

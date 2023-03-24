@@ -41,7 +41,6 @@ def get_center(arr, conv):
     result = sig.convolve2d(arr, conv, mode='same')
     # Find the maximum position
     max_pos = np.unravel_index(np.argmax(result.get()), result.shape)
-
     return (max_pos[0], max_pos[1])
 
 def one_round_clustering(n_clusters, manifold_data):
@@ -106,6 +105,10 @@ def load_data(path):
 
 def _crop_from_center(data, size, com, i):
     pos_x, pos_y = com[i]
+    if abs(pos_x - size // 2) > (data.shape[1] - size) // 2:
+        pos_x = data.shape[1] // 2
+    if abs(pos_y - size // 2) > (data.shape[0] - size) // 2:
+        pos_y = data.shape[0] // 2
     return data[pos_y - size // 2: pos_y + size // 2,
                 pos_x - size // 2: pos_x + size // 2]
 
