@@ -21,13 +21,18 @@ start_pos = [60, 162]
 rad = 50
 
 disk = []
-for n in range(len(arr)):
-    disk.append(arr[n][start_pos[0]:start_pos[0] + rad,
-                       start_pos[1]:start_pos[1] + rad])
-    plt.imshow(disk[n])
-    plt.show()
+for i in range(4):
+    for n in range(len(arr)):
+        arr[n] = imutils.rotate(arr[n], 90)
+    for n in range(len(arr)):
+        disk.append(arr[n][start_pos[0]:start_pos[0] + rad,
+                        start_pos[1]:start_pos[1] + rad])
+        if n % 10 == 0:
+            plt.imshow(disk[n])
+            plt.axis('off')
+            plt.show()
 # %%
-np.save('output/disk_011_3.npy', np.array(disk))
+np.save('output/disk_011_4.npy', np.array(disk))
 # %%
 
 fig, ax = plt.subplots(2, 5)

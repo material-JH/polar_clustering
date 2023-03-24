@@ -22,13 +22,12 @@ def get_circle_conv(size):
     return circle
 
 def plot_vertical(data):
-    
+    fig, axs = plt.subplots(nrows=8, ncols=5, figsize=(8, 12))
     for i in range(0, 40, 5):
-        fig, axs = plt.subplots(nrows=1, ncols=5, figsize=(8, 4))
         for j in range(5):
-            axs[j].imshow(data[j, i, 5])
-            axs[j].axis('off')
-        plt.show()
+            axs[i // 5, j].imshow(data[j, i, 5])
+            axs[i // 5, j].axis('off')
+    plt.show()
 
 def get_center(arr, conv):
     # if cp.cuda.runtime.
@@ -105,10 +104,7 @@ def load_data(path):
 
 def _crop_from_center(data, size, com, i):
     pos_x, pos_y = com[i]
-    if abs(pos_x - size // 2) > (data.shape[1] - size) // 2:
-        pos_x = data.shape[1] // 2
-    if abs(pos_y - size // 2) > (data.shape[0] - size) // 2:
-        pos_y = data.shape[0] // 2
+
     return data[pos_y - size // 2: pos_y + size // 2,
                 pos_x - size // 2: pos_x + size // 2]
 

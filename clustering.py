@@ -9,10 +9,9 @@ import cv2
 
 # matplotlib.use('QtAgg')
 #%%
-data = load_data(r"/mnt/c/Users/em3-user/Documents/set1_SRO")
+data = load_data(r"/mnt/c/Users/em3-user/Documents/set2_SRO")[:,::2,::2]
 #%%
 circle = get_circle_conv(40)
-#%%
 com = fn_on_resized(data, get_center, circle)
 com = np.reshape(com, (-1, *com.shape[-1:]))
 com = [list(map(int, c[::-1])) for c in com]
@@ -24,46 +23,64 @@ data_post = crop_from_center(data_post, 250, com)
 #%%
 disk_pos_002 = [7, 100]
 disk_pos_011 = [55, 145]
-data_post_002 = crop(data_post, 50, disk_pos_002)
+data_post_002 = crop(data_post, 55, disk_pos_002)
 data_post_011 = crop(data_post, 55, disk_pos_011)
 data_post_002_norm = normalize_Data(data_post_002)
 data_post_011_norm = normalize_Data(data_post_011)
-n = 5
+n = 9
+data_post_002_norm = fn_on_resized(data_post_002_norm, cv2.GaussianBlur, (n, n), 0)
 data_post_011_norm = fn_on_resized(data_post_011_norm, cv2.GaussianBlur, (n, n), 0)
 
 #%%
-circle = get_circle_conv(42)
+new_size = 42
+circle = get_circle_conv(new_size)
+
 com = fn_on_resized(data_post_011_norm, get_center, circle)
 com = np.reshape(com, (-1, *com.shape[-1:]))
 com = [list(map(int, c[::-1])) for c in com]
-com = np.array(com)
 
-plt.scatter(com[:, 0], com[:, 1])
-#%%
-data_post_011_norm = fn_on_resized(data_post_011_norm, crop_from_center, 42, com)
+for n, c in enumerate(com):
+    if c[0] < new_size // 2 or c[0] > 55 - new_size // 2 or c[1] < new_size // 2 or c[1] > 55 - new_size // 2:
+        com[n] = [27, 27]
+data_post_011_norm = crop_from_center(data_post_011_norm, new_size, com)
+
+com = fn_on_resized(data_post_002_norm, get_center, circle)
+com = np.reshape(com, (-1, *com.shape[-1:]))
+com = [list(map(int, c[::-1])) for c in com]
+
+for n, c in enumerate(com):
+    if c[0] < new_size // 2 or c[0] > 55 - new_size // 2 or c[1] < new_size // 2 or c[1] > 55 - new_size // 2:
+        com[n] = [27, 27]
+
+data_post_002_norm = crop_from_center(data_post_002_norm, new_size, com)
 
 #%%
-for i in range(0, 30, 3):
-    x, y = get_center(data_post_011_norm[0, i, 5], circle)
-    print(x, y)
-    plt.imshow(crop_from_center(np.array([[[data_post_011_norm[0, i, 5]]]]), 42, [[x, y]])[0,0,0])
+
+
+def plot_vertical(data):
+    fig, axs = plt.subplots(nrows=8, ncols=5, figsize=(8, 12))
+    for i in range(0, 16, 2):
+        for j in range(5):
+            axs[i // 2, j].imshow(data[2, i, j])
+            axs[i // 2, j].axis('off')
     plt.show()
-
-#%%
+    
 plot_vertical(data_post_011_norm)
 #%%
 n_neighbors = 15
 n_components = 2
 min_dist = 0.2
 
-n = 5
-simulations = np.load('output/disk_011_3.npy')
+n = 9
+simulations = np.load('output/disk_011_4.npy')
 simulations = normalize_Data(simulations)[:,:,:,0,0]
 simulations = fn_on_resized(simulations, cv2.GaussianBlur, (n, n), 0)[:,:,:,0,0]
+simulations = fn_on_resized(simulations.reshape((1, 1, *simulations.shape)), resize, (48, 48))[0,0,:]
+simulations = crop(simulations.reshape((1, 1, *simulations.shape)), 42, [5, 1])[0,0,:]
+
 
 #%%
-
-n_row = 10
+n_row = len(simulations) // 8
 fig, ax = plt.subplots(2, n_row)
 for img_gpu in range(n_row):
     for j in range(2):
@@ -78,30 +95,19 @@ new = np.concatenate([data_post_011_norm.reshape(xyz , -1), simulations.reshape(
 #%%
 # embedding, labels = get_emb_lbl(simulations.reshape(len(simulations), -1), n_neighbors=15, min_dist=0.1 * 5,)
 # embedding, labels = get_emb_lbl(data_post_011_norm.reshape(xyz , -1), n_neighbors=15, min_dist=0.1, n_components=3)
-embedding, labels = get_emb_lbl(new, n_neighbors=10, min_dist=0.05, n_components=2)
+embedding, labels = get_emb_lbl(new, n_neighbors=15, min_dist=0.1, n_components=3)
 #%%
-ax1, ax2 = 0, 1
+ax1, ax2 = 0, 2
 plt.scatter(embedding[:xyz, ax1], embedding[:xyz, ax2])
 plt.scatter(embedding[xyz:, ax1], embedding[xyz:, ax2])
 #%%
-n = -1
-em_sim = embedding[xyz:]
-distances = np.linalg.norm(em_sim - em_sim[n], axis=1)
-nn_indexes = np.argsort(distances)[:4]
-#%%
-fig, ax = plt.subplots(1, len(nn_indexes))
-for i, nn in enumerate(nn_indexes):
-    ax[i].imshow(simulations[nn])
-    ax[i].axis('off')
-
-#%%
-test=np.zeros(1900)
+test=np.zeros(xyz)
 for n in range(-len(simulations), 0):
     distances = np.linalg.norm(embedding[:xyz] - embedding[n], axis=1)
     nearest_neighbor_index = np.argmin(distances)
     fig, ax = plt.subplots(1, 2, figsize=(3,2))
     fig.suptitle(f'{n} {nearest_neighbor_index}')
-    ax[0].imshow(data_post_011_norm.reshape(xyz , 50, 50)[nearest_neighbor_index])
+    ax[0].imshow(data_post_011_norm.reshape(xyz , 42, 42)[nearest_neighbor_index])
     ax[0].axis('off')
     ax[1].imshow(simulations[n])
     ax[1].axis('off')
@@ -111,23 +117,6 @@ print(np.where(test > 0.1))
 test = test.reshape(data.shape[:-2])
 print(np.where(test > 0.1))
 
-#%%
-
-labels = []
-for f in os.listdir('output'):
-    if f.__contains__('DP'):
-        if f.__contains__('-'):
-            labels.append(float(f[-6:-4]))
-        else:
-            labels.append(float(f[-5:-4]))
-
-labels = np.array(labels)
-labels /= max(labels)
-# plt.scatter(embedding[:1900, 0], embedding[:1900, 1], c='blue', label='Cluster 1')
-fig, ax = plt.subplots()
-scatter = ax.scatter(embedding[:, 0], embedding[:, 1], c=labels, cmap='bwr', vmin=-1, vmax=1)
-cbar = plt.colorbar(scatter)
-# plt.scatter(embedding[labels > 0, 0], embedding[labels > 0, 1], alpha=labels[labels > 0], c='red', label='Cluster 2')
 #%%
 
 from sklearn.cluster import SpectralClustering

@@ -19,11 +19,13 @@ def get_polar(atom:Atoms):
 
 N = 512
 lattice_constant = 3.94513
-repeat_layer = 5
 stem = Stem('gpu')
 ######################
-thickness_layer = 22
-# path = r'/home/jinho93/materials/oxides/perobskite/bsto/mp-1075943/'
+# repeat_layer = 20
+# thickness_layer = 100
+# atoms_list = read('xdat/XDATCAR', index=':')
+repeat_layer = 5
+thickness_layer = 23
 atoms_list = read('xdat/XDATCAR_large', index=':')
 
 polar_arr = []
