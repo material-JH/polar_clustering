@@ -5,8 +5,9 @@ from sklearn.cluster import KMeans, SpectralClustering
 from sklearn.cluster import MiniBatchKMeans
 import numpy as np
 import matplotlib.pyplot as plt
+import umap
+from functools import reduce
 
-# import scipy.signal as sig
 try:
     import cupyx.scipy.signal as sig
     import cupy as cp
@@ -116,12 +117,16 @@ def _crop(data, size, position):
                 position[1]:position[1] + size]
 
 def crop(data, size, position):
+    # this is a function that can be used to apply a crop function on a 4D array
     return fn_on_resized(data, _crop, size, position)
 
 def rotate_by_cen(data, angle, com, i):
+    # this is a function that can be used to apply a function for rotation on a 4D array
     return imutils.rotate(data, angle, center=com[i])
 
+
 def fn_on_resized(data, fn, *args, **kwargs):
+    # this is a function that can be used to apply a function on a 4D array
     shape = data.shape
     tmp = np.reshape(data, (-1, *shape[-2:]))
     output = []
@@ -136,8 +141,6 @@ def fn_on_resized(data, fn, *args, **kwargs):
 
     return np.reshape(output, (*shape[:3], int(np.sqrt(output.shape[-1])), -1))
 
-import umap
-from functools import reduce
 
 
 def get_emb_lbl_real(data,n_components=2, n_neighbors=15, min_dist=0.1):

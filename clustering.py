@@ -32,10 +32,23 @@ data_post_002_norm = fn_on_resized(data_post_002_norm, cv2.GaussianBlur, (n, n),
 data_post_011_norm = fn_on_resized(data_post_011_norm, cv2.GaussianBlur, (n, n), 0)
 
 #%%
+from scipy import ndimage
+img = data_post_011_norm[0,10,0]
+
+def sobel(img):
+
+    sobel_x = ndimage.sobel(img, axis=0)
+    sobel_y = ndimage.sobel(img, axis=1)
+    edges = np.hypot(sobel_x, sobel_y)
+    return edges
+#%%
+plt.imshow(crop_from_center(data_post_011_norm, 42, com)[0,10,0])
+#%%
+
 new_size = 42
 circle = get_circle_conv(new_size)
 
-com = fn_on_resized(data_post_011_norm, get_center, circle)
+com = fn_on_resized(fn_on_resized(data_post_011_norm, sobel), get_center, circle)
 com = np.reshape(com, (-1, *com.shape[-1:]))
 com = [list(map(int, c[::-1])) for c in com]
 
@@ -77,10 +90,17 @@ simulations = normalize_Data(simulations)[:,:,:,0,0]
 simulations = fn_on_resized(simulations, cv2.GaussianBlur, (n, n), 0)[:,:,:,0,0]
 simulations = fn_on_resized(simulations.reshape((1, 1, *simulations.shape)), resize, (48, 48))[0,0,:]
 simulations = crop(simulations.reshape((1, 1, *simulations.shape)), 42, [5, 1])[0,0,:]
-
-
 #%%
-n_row = len(simulations) // 8
+def resize(img, size):
+    tmp = np.zeros(img.shape)
+    tmp += np.min(img)
+    re = cv2.resize(img, size[::-1], interpolation=cv2.INTER_AREA)
+    tmp[:size[0], :size[1]] = re
+    return tmp
+sim_resized = fn_on_resized(simulations.reshape((1, 1, *simulations.shape)), resize, (42, 40))[0,0]
+simulations = np.concatenate([simulations, sim_resized, simulations], axis=0)
+#%%
+n_row = len(simulations) // 32 // 4
 fig, ax = plt.subplots(2, n_row)
 for img_gpu in range(n_row):
     for j in range(2):
@@ -95,14 +115,14 @@ new = np.concatenate([data_post_011_norm.reshape(xyz , -1), simulations.reshape(
 #%%
 # embedding, labels = get_emb_lbl(simulations.reshape(len(simulations), -1), n_neighbors=15, min_dist=0.1 * 5,)
 # embedding, labels = get_emb_lbl(data_post_011_norm.reshape(xyz , -1), n_neighbors=15, min_dist=0.1, n_components=3)
-embedding, labels = get_emb_lbl(new, n_neighbors=15, min_dist=0.1, n_components=3)
+embedding, labels = get_emb_lbl(new, n_neighbors=15, min_dist=0.1, n_components=2)
 #%%
-ax1, ax2 = 0, 2
+ax1, ax2 = 0, 1
 plt.scatter(embedding[:xyz, ax1], embedding[:xyz, ax2])
 plt.scatter(embedding[xyz:, ax1], embedding[xyz:, ax2])
 #%%
 test=np.zeros(xyz)
-for n in range(-len(simulations), 0):
+for n in range(-len(simulations), 0, 15):
     distances = np.linalg.norm(embedding[:xyz] - embedding[n], axis=1)
     nearest_neighbor_index = np.argmin(distances)
     fig, ax = plt.subplots(1, 2, figsize=(3,2))
@@ -123,7 +143,8 @@ from sklearn.cluster import SpectralClustering
 spectral = SpectralClustering(n_clusters=5, affinity='rbf', assign_labels='kmeans')
 labels = spectral.fit_predict(embedding)
 # embedding, labels = get_emb_lbl(data_post, n_neighbors, n_components, min_dist)
-alpha = 0.5
+alpha = 1
+alpha_sim = 0.2
 simLen = len(labels) - xyz
 plt.scatter(embedding[labels == 0, 0], embedding[labels == 0, 1], alpha=alpha, c='purple', label='Cluster 0')
 plt.scatter(embedding[labels == 1, 0], embedding[labels == 1, 1], alpha=alpha, c='#3b528b', label='Cluster 1')
@@ -131,12 +152,21 @@ plt.scatter(embedding[labels == 2, 0], embedding[labels == 2, 1], alpha=alpha, c
 plt.scatter(embedding[labels == 3, 0], embedding[labels == 3, 1], alpha=alpha, c='#5ac864', label='Cluster 3')
 plt.scatter(embedding[labels == 4, 0], embedding[labels == 4, 1], alpha=alpha, c='yellow', label='Cluster 4')
 # plt.scatter(embedding[xyz:, 0], embedding[xyz:, 1], alpha=0.8, c='Red', label='simulation')
-plt.scatter(embedding[xyz:-simLen // 2, 0], embedding[xyz:-simLen // 2, 1], alpha=0.8, label='dn', c='red')
-plt.scatter(embedding[xyz + simLen // 2:, 0], embedding[xyz + simLen // 2:, 1], alpha=0.8, label='up', c='blue')
+plt.scatter(embedding[xyz:-simLen // 2, 0], embedding[xyz:-simLen // 2, 1], alpha=alpha_sim, label='dn', c='red')
+plt.scatter(embedding[xyz + simLen // 2:, 0], embedding[xyz + simLen // 2:, 1], alpha=alpha_sim, label='up', c='blue')
 
 # labels[labels == 3] = 2
 plt.title('UMAP + K-means clustering')
 plt.legend()
+plt.show()
+#%%
+# get nearest neighbor from simulation
+wlabel = 0
+rnd_num = np.random.randint(np.argwhere(labels == wlabel).min(), np.argwhere(labels == wlabel).max())
+nearest_neighbor_index = np.argmin(np.linalg.norm(embedding[xyz:] - embedding[rnd_num], axis=1))
+plt.imshow(simulations[nearest_neighbor_index])
+plt.show()
+plt.imshow(data_post_011_norm.reshape(xyz , 42, 42)[rnd_num])
 plt.show()
 #%%
 fig, axs = plt.subplots(nrows=1, ncols=5, figsize=(8, 4))
@@ -146,7 +176,7 @@ for n, img_gpu in enumerate(labels[:xyz].reshape(data_post_002.shape[:3])):
     im = axs[n].imshow(img_gpu)
     axs[n].axis('off')
 from matplotlib.ticker import MaxNLocator
-cbar1 = fig.colorbar(im, ax=axs[n], format='%d')
+cbar1 = fig.colorbar(im, ax=axs[n], format='%d')    
 cbar1.ax.yaxis.set_major_locator(MaxNLocator(integer=True))
 plt.show()
 
@@ -178,34 +208,6 @@ for img_gpu, j in zip(lbl_reshape, data.sum(axis=(-1, -2))):
     axs[0].imshow(img_gpu)
     axs[1].imshow(j)
     plt.show()
-# %%
-import cv2
-# Convert to grayscale
-# gray = cv2.cvtColor(data_post_002[0,20,0], cv2.COLOR_BGR2GRAY)
-# Apply Gaussian blur to reduce noise
-n = 5
-blur = cv2.GaussianBlur(data_post_011_norm[0,10,0] + 1, (n, n), 0)
-
-blur = cv2.convertScaleAbs(blur)
-data_post_011_norm[0,10,0][get_center(blur)] = 1e+1
-plt.imshow(data_post_011_norm[0,10,0])
-
-# print(center_of_mass_position(blur))
-# edges = cv2.Canny(blur, 1, 2)
-# print(center_of_mass_position(edges))
-# edges[center_of_mass_position(edges)] = 1e+2
-# plt.imshow(edges)
-# Display the result
-# %%
-
-img = data[0,10,0]
-rot = imutils.rotate(img, 81, center=get_center(img, circle)[::-1])
-# %%
-print(get_center(img, circle))
-print(get_center(rot, circle))
-# plt.imshow(rot)
-# %%
-plt.imshow(data_post[0,10,0])
 # %%
 import tkinter
 
