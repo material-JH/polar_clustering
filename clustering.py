@@ -88,6 +88,7 @@ n = 9
 simulations = np.load('output/disk_011_4.npy')
 simulations = normalize_Data(simulations)[:,:,:,0,0]
 simulations = fn_on_resized(simulations, cv2.GaussianBlur, (n, n), 0)[:,:,:,0,0]
+simulations = fn_on_resized(simulations.reshape((1, 1, *simulations.shape)), resize, (50, 50))[0,0,:]
 # simulations = crop(simulations.reshape((1, 1, *simulations.shape)), 42, [5, 1])[0,0,:]
 #%%
 def resize(img, size):
