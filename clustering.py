@@ -9,7 +9,7 @@ import cv2
 
 # matplotlib.use('QtAgg')
 #%%
-data = load_data(r"/mnt/c/Users/em3-user/Documents/set2_SRO")[:,::2,::2]
+data = load_data(r"/mnt/c/Users/em3-user/Documents/set2_SRO")
 #%%
 circle = get_circle_conv(40)
 com = fn_on_resized(data, get_center, circle)
@@ -23,8 +23,8 @@ data_post = crop_from_center(data_post, 250, com)
 #%%
 disk_pos_002 = [7, 100]
 disk_pos_011 = [55, 145]
-data_post_002 = crop(data_post, 55, disk_pos_002)
-data_post_011 = crop(data_post, 55, disk_pos_011)
+data_post_002 = crop(data_post, 50, disk_pos_002)
+data_post_011 = crop(data_post, 50, disk_pos_011)
 data_post_002_norm = normalize_Data(data_post_002)
 data_post_011_norm = normalize_Data(data_post_011)
 n = 9
@@ -88,8 +88,7 @@ n = 9
 simulations = np.load('output/disk_011_4.npy')
 simulations = normalize_Data(simulations)[:,:,:,0,0]
 simulations = fn_on_resized(simulations, cv2.GaussianBlur, (n, n), 0)[:,:,:,0,0]
-simulations = fn_on_resized(simulations.reshape((1, 1, *simulations.shape)), resize, (48, 48))[0,0,:]
-simulations = crop(simulations.reshape((1, 1, *simulations.shape)), 42, [5, 1])[0,0,:]
+# simulations = crop(simulations.reshape((1, 1, *simulations.shape)), 42, [5, 1])[0,0,:]
 #%%
 def resize(img, size):
     tmp = np.zeros(img.shape)
@@ -97,10 +96,13 @@ def resize(img, size):
     re = cv2.resize(img, size[::-1], interpolation=cv2.INTER_AREA)
     tmp[:size[0], :size[1]] = re
     return tmp
-sim_resized = fn_on_resized(simulations.reshape((1, 1, *simulations.shape)), resize, (42, 40))[0,0]
-simulations = np.concatenate([simulations, sim_resized, simulations], axis=0)
+# sim_resized = fn_on_resized(simulations.reshape((1, 1, *simulations.shape)), resize, (42, 38))[0,0]
+sim_resized = fn_on_resized(simulations.reshape((1, 1, *simulations.shape)), resize, (50, 46))[0,0]
+simulations = np.concatenate([simulations, sim_resized], axis=0)
+# sim_resized = fn_on_resized(simulations.reshape((1, 1, *simulations.shape)), resize, (42, 38))[0,0]
+# simulations = np.concatenate([simulations, sim_resized], axis=0)
 #%%
-n_row = len(simulations) // 32 // 4
+n_row = len(simulations) // 2 ** 5
 fig, ax = plt.subplots(2, n_row)
 for img_gpu in range(n_row):
     for j in range(2):
@@ -140,20 +142,23 @@ print(np.where(test > 0.1))
 #%%
 
 from sklearn.cluster import SpectralClustering
-spectral = SpectralClustering(n_clusters=5, affinity='rbf', assign_labels='kmeans')
+spectral = SpectralClustering(n_clusters=6, affinity='rbf', assign_labels='kmeans', gamma=2)
 labels = spectral.fit_predict(embedding)
 # embedding, labels = get_emb_lbl(data_post, n_neighbors, n_components, min_dist)
 alpha = 1
-alpha_sim = 0.2
+alpha_sim = 0.5
 simLen = len(labels) - xyz
-plt.scatter(embedding[labels == 0, 0], embedding[labels == 0, 1], alpha=alpha, c='purple', label='Cluster 0')
-plt.scatter(embedding[labels == 1, 0], embedding[labels == 1, 1], alpha=alpha, c='#3b528b', label='Cluster 1')
-plt.scatter(embedding[labels == 2, 0], embedding[labels == 2, 1], alpha=alpha, c='#20908c', label='Cluster 2')
-plt.scatter(embedding[labels == 3, 0], embedding[labels == 3, 1], alpha=alpha, c='#5ac864', label='Cluster 3')
-plt.scatter(embedding[labels == 4, 0], embedding[labels == 4, 1], alpha=alpha, c='yellow', label='Cluster 4')
+labels_exp = labels[:xyz]
+embedding_exp = embedding[:xyz]
+plt.scatter(embedding_exp[labels_exp == 0, 0], embedding_exp[labels_exp == 0, 1], alpha=alpha, c='#40004f', label='Cluster 0')
+plt.scatter(embedding_exp[labels_exp == 1, 0], embedding_exp[labels_exp == 1, 1], alpha=alpha, c='#424186', label='Cluster 1')
+plt.scatter(embedding_exp[labels_exp == 2, 0], embedding_exp[labels_exp == 2, 1], alpha=alpha, c='#2a778e', label='Cluster 2')
+plt.scatter(embedding_exp[labels_exp == 3, 0], embedding_exp[labels_exp == 3, 1], alpha=alpha, c='#22a785', label='Cluster 3')
+plt.scatter(embedding_exp[labels_exp == 4, 0], embedding_exp[labels_exp == 4, 1], alpha=alpha, c='#77d153', label='Cluster 4')
+plt.scatter(embedding_exp[labels_exp == 5, 0], embedding_exp[labels_exp == 5, 1], alpha=alpha, c='yellow', label='Cluster 5')
 # plt.scatter(embedding[xyz:, 0], embedding[xyz:, 1], alpha=0.8, c='Red', label='simulation')
-plt.scatter(embedding[xyz:-simLen // 2, 0], embedding[xyz:-simLen // 2, 1], alpha=alpha_sim, label='dn', c='red')
-plt.scatter(embedding[xyz + simLen // 2:, 0], embedding[xyz + simLen // 2:, 1], alpha=alpha_sim, label='up', c='blue')
+plt.scatter(embedding[xyz:, 0], embedding[xyz:, 1], alpha=alpha_sim, label='simulation', c='red')
+# plt.scatter(embedding[xyz + simLen // 2:, 0], embedding[xyz + simLen // 2:, 1], alpha=alpha_sim, label='up', c='blue')
 
 # labels[labels == 3] = 2
 plt.title('UMAP + K-means clustering')
@@ -161,12 +166,17 @@ plt.legend()
 plt.show()
 #%%
 # get nearest neighbor from simulation
-wlabel = 0
-rnd_num = np.random.randint(np.argwhere(labels == wlabel).min(), np.argwhere(labels == wlabel).max())
+wlabel = 4
+rnd_num = np.random.choice(np.where(labels[:xyz] == wlabel)[0])
+print(rnd_num)
 nearest_neighbor_index = np.argmin(np.linalg.norm(embedding[xyz:] - embedding[rnd_num], axis=1))
-plt.imshow(simulations[nearest_neighbor_index])
-plt.show()
-plt.imshow(data_post_011_norm.reshape(xyz , 42, 42)[rnd_num])
+fig, ax = plt.subplots(1, 2, figsize=(3,2))
+ax[0].imshow(data_post_011_norm.reshape(xyz , 42, 42)[rnd_num])
+ax[0].title.set_text('real')
+ax[0].axis('off')
+ax[1].imshow(simulations[nearest_neighbor_index])
+ax[1].title.set_text('simulation')
+ax[1].axis('off')
 plt.show()
 #%%
 fig, axs = plt.subplots(nrows=1, ncols=5, figsize=(8, 4))
