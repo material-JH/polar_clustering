@@ -5,25 +5,43 @@ from sklearn.cluster import KMeans, SpectralClustering
 from sklearn.cluster import MiniBatchKMeans
 import numpy as np
 import matplotlib.pyplot as plt
+import umap
+from functools import reduce
+
+try:
+    import cupyx.scipy.signal as sig
+    import cupy as cp
+except:
+    import scipy.signal as sig
+
+def get_circle_conv(size):
+    center = (size // 2, size // 2)  # Center point of the circle
+    x, y = np.meshgrid(np.arange(size), np.arange(size))
+    dist = np.sqrt((x-center[0])**2 + (y-center[1])**2)
+    circle = np.zeros((size, size))
+    circle[dist <= center[0]] = 1
+    return circle
 
 def plot_vertical(data):
-    
+    fig, axs = plt.subplots(nrows=8, ncols=5, figsize=(8, 12))
     for i in range(0, 40, 5):
-        fig, axs = plt.subplots(nrows=1, ncols=5, figsize=(8, 4))
         for j in range(5):
-            axs[j].imshow(data[j, i, 5])
-            axs[j].axis('off')
-        plt.show()
+            axs[i // 5, j].imshow(data[j, i, 5])
+            axs[i // 5, j].axis('off')
+    plt.show()
 
-def center_of_mass_position(arr):
-    rows, cols = arr.shape
-    total_mass = arr.sum()
-    if total_mass == 0:
-        return None
-    y_indices, x_indices = np.indices((rows, cols))
-    x_c = int((arr * x_indices).sum() / total_mass)
-    y_c = int((arr * y_indices).sum() / total_mass)
-    return (y_c, x_c)
+def get_center(arr, conv):
+    # if cp.cuda.runtime.
+    try:
+        arr = cp.asarray(arr)
+        conv = cp.asarray(conv)
+    except:
+        pass
+    # result = sig.convolve2d(data_post_011_norm[0,0,0], circle, mode='same')
+    result = sig.convolve2d(arr, conv, mode='same')
+    # Find the maximum position
+    max_pos = np.unravel_index(np.argmax(result.get()), result.shape)
+    return (max_pos[0], max_pos[1])
 
 def one_round_clustering(n_clusters, manifold_data):
     if np.shape(manifold_data)[1] > 1000:
@@ -78,41 +96,51 @@ def _normalize_Data(data):
 def load_data(path):
     data = []
     for i in os.listdir(path):
-        data.append(hs.load(os.path.join(path, i)).data)
+        if i.__contains__('dm'):
+            data.append(hs.load(os.path.join(path, i)).data)
     data = np.stack(data, axis=0)
     data = data.swapaxes(1, 3).swapaxes(2, 4)
     
     return data
 
-def _shift_n_crop(data, crop_amount, shift_x, shift_y):
-    nkx = data.shape[0]
-    return data[crop_amount + shift_x:nkx - crop_amount + shift_x,
-                crop_amount + shift_y:nkx - crop_amount + shift_y]
+def _crop_from_center(data, size, com, i):
+    pos_x, pos_y = com[i]
 
-def shift_n_crop(data, crop_amount, shift_x, shift_y):
-    return fn_on_resized(data, _shift_n_crop, crop_amount, shift_x, shift_y)
+    return data[pos_y - size // 2: pos_y + size // 2,
+                pos_x - size // 2: pos_x + size // 2]
+
+def crop_from_center(data, size, com):
+    return fn_on_resized(data, _crop_from_center, size, com, list=True)
                 
 def _crop(data, size, position):
     return data[position[0]:position[0] + size, 
                 position[1]:position[1] + size]
 
 def crop(data, size, position):
+    # this is a function that can be used to apply a crop function on a 4D array
     return fn_on_resized(data, _crop, size, position)
 
-def fn_on_resized(data, fn, *args):
+def rotate_by_cen(data, angle, com, i):
+    # this is a function that can be used to apply a function for rotation on a 4D array
+    return imutils.rotate(data, angle, center=com[i])
+
+
+def fn_on_resized(data, fn, *args, **kwargs):
+    # this is a function that can be used to apply a function on a 4D array
     shape = data.shape
     tmp = np.reshape(data, (-1, *shape[-2:]))
     output = []
     for i in range(tmp.shape[0]):
-        output.append(fn(tmp[i], *args))
+        if 'list' in kwargs.keys():
+            output.append(fn(tmp[i], *args, i))
+        else:
+            output.append(fn(tmp[i], *args))
         
     output = np.array(output)
     output = np.reshape(output, (*shape[:3], -1))
 
     return np.reshape(output, (*shape[:3], int(np.sqrt(output.shape[-1])), -1))
 
-import umap
-from functools import reduce
 
 
 def get_emb_lbl_real(data,n_components=2, n_neighbors=15, min_dist=0.1):

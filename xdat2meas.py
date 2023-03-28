@@ -1,4 +1,5 @@
 #%%
+import cv2
 from stem4D import *
 from ase import Atoms
 def get_polar(atom:Atoms):
@@ -18,28 +19,25 @@ def get_polar(atom:Atoms):
 
 N = 512
 lattice_constant = 3.94513
-repeat_layer = 10
-stem = Stem('cpu')
+stem = Stem('gpu')
 ######################
-name = 'POSCAR_REV'
-
-thickness_layer = 10
-# path = r'/home/jinho93/materials/oxides/perobskite/bsto/mp-1075943/'
-path = r'/home/jinho93/materials/oxides/perobskite/bsto/mp-1075943/isif7/'
-atoms_list = read(path + 'XDATCAR', index=':')
+# repeat_layer = 20
+# thickness_layer = 100
+# atoms_list = read('xdat/XDATCAR', index=':')
+repeat_layer = 5
+thickness_layer = 23
+atoms_list = read('xdat/XDATCAR_large', index=':')
 
 polar_arr = []
 for atom in atoms_list:
     polar_arr.append(get_polar(atom))
 
-plt.plot(polar_arr)
-#%%
-for n, atoms in enumerate(atoms_list[::20]):
+for n, atoms in enumerate(atoms_list[::50]):
     stem.set_atom(atoms)
     polar = round(get_polar(atoms))
-    print(polar)
     cell = stem.atoms.cell
     stem.repeat_cell((round(repeat_layer * cell[1,1] / cell[0,0]), repeat_layer, thickness_layer))
+    print(cell)
     stem.generate_pot(N, lattice_constant/2)
     stem.set_probe()
     stem.set_scan((2 * 10, 2 * 10))
@@ -48,13 +46,17 @@ for n, atoms in enumerate(atoms_list[::20]):
                     int(N * measurement.calibrations[3].sampling / measurement.calibrations[2].sampling))
     test = squaring(measurement, [1,1], new_size, N)
     measurement_np = crop_center(test, [55 * 4, 55 * 4])
-    np.save(f'output/DP_{thickness_layer}_{n}_{polar}.npy', measurement_np)
-    plt.imshow(measurement_np[0,0])
+    np.save(f'output/DP_{thickness_layer}_{polar}.npy', measurement_np)
+    if n % 2 == 0:
+        n = 7
+        blur = cv2.GaussianBlur(measurement_np[0,0], (n, n), 0)
+
+        plt.imshow(blur,vmax=np.max(blur) / 2)
+        plt.show()
 # %%
 import glob
 import os
 for f in glob.glob('output/*'):
-    print(f)
-    if f.__contains__('DP'):
+    if f.__contains__('DP_22'):
         os.remove(f)
 # %%
