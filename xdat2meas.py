@@ -16,24 +16,25 @@ def get_polar(atom:Atoms):
     
     return polar
     
-
 N = 512
 lattice_constant = 3.94513
-stem = Stem('gpu')
+stem = Stem('cpu')
 ######################
-repeat_layer = 20
-thickness_layer = 100
-atoms_list = read('xdat/XDATCAR', index=':')
+# repeat_layer = 20
+# thickness_layer = 100
+# atoms_list = read('xdat/XDATCAR', index=':')
 # repeat_layer = 5
 # thickness_layer = 23
-# atoms_list = read('xdat/XDATCAR_large', index=':')
-#%%
+repeat_layer = 20
+thickness_layer = 78
+atoms_list = read('xdat/XDATCAR_strain2', index=':')
+
 polar_arr = []
 for atom in atoms_list:
     polar_arr.append(get_polar(atom))
 plt.plot(polar_arr)
-#%%
-for n, atoms in enumerate(atoms_list[::50]):
+
+for n, atoms in enumerate(atoms_list[::25]):
     stem.set_atom(atoms)
     polar = round(get_polar(atoms))
     cell = stem.atoms.cell
@@ -47,7 +48,7 @@ for n, atoms in enumerate(atoms_list[::50]):
                     int(N * measurement.calibrations[3].sampling / measurement.calibrations[2].sampling))
     test = squaring(measurement, [1,1], new_size, N)
     measurement_np = crop_center(test, [55 * 4, 55 * 4])
-    np.save(f'output/DP_{thickness_layer}_{polar}.npy', measurement_np)
+    np.save(f'output/DP_strain_{thickness_layer}_{polar}.npy', measurement_np)
     if n % 2 == 0:
         n = 7
         blur = cv2.GaussianBlur(measurement_np[0,0], (n, n), 0)
@@ -58,6 +59,6 @@ for n, atoms in enumerate(atoms_list[::50]):
 import glob
 import os
 for f in glob.glob('output/*'):
-    if f.__contains__('DP_22'):
+    if f.__contains__('DP_strain'):
         os.remove(f)
 # %%
