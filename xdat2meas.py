@@ -21,17 +21,18 @@ N = 512
 lattice_constant = 3.94513
 stem = Stem('gpu')
 ######################
-# repeat_layer = 20
-# thickness_layer = 100
-# atoms_list = read('xdat/XDATCAR', index=':')
-repeat_layer = 5
-thickness_layer = 23
-atoms_list = read('xdat/XDATCAR_large', index=':')
-
+repeat_layer = 20
+thickness_layer = 100
+atoms_list = read('xdat/XDATCAR', index=':')
+# repeat_layer = 5
+# thickness_layer = 23
+# atoms_list = read('xdat/XDATCAR_large', index=':')
+#%%
 polar_arr = []
 for atom in atoms_list:
     polar_arr.append(get_polar(atom))
-
+plt.plot(polar_arr)
+#%%
 for n, atoms in enumerate(atoms_list[::50]):
     stem.set_atom(atoms)
     polar = round(get_polar(atoms))

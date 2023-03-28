@@ -30,6 +30,7 @@ data_post_011_norm = normalize_Data(data_post_011)
 n = 9
 data_post_002_norm = fn_on_resized(data_post_002_norm, cv2.GaussianBlur, (n, n), 0)
 data_post_011_norm = fn_on_resized(data_post_011_norm, cv2.GaussianBlur, (n, n), 0)
+data_post_011_norm = np.load('output/set4_Ru_011.npy')
 
 #%%
 from scipy import ndimage
@@ -103,7 +104,7 @@ simulations = np.concatenate([simulations, sim_resized], axis=0)
 # sim_resized = fn_on_resized(simulations.reshape((1, 1, *simulations.shape)), resize, (42, 38))[0,0]
 # simulations = np.concatenate([simulations, sim_resized], axis=0)
 #%%
-n_row = len(simulations) // 2 ** 5
+n_row = len(simulations) // 8
 fig, ax = plt.subplots(2, n_row)
 for img_gpu in range(n_row):
     for j in range(2):
@@ -146,6 +147,7 @@ from sklearn.cluster import SpectralClustering
 spectral = SpectralClustering(n_clusters=6, affinity='rbf', assign_labels='kmeans', gamma=2)
 labels = spectral.fit_predict(embedding)
 # embedding, labels = get_emb_lbl(data_post, n_neighbors, n_components, min_dist)
+#%%
 alpha = 1
 alpha_sim = 0.5
 simLen = len(labels) - xyz
@@ -167,12 +169,12 @@ plt.legend()
 plt.show()
 #%%
 # get nearest neighbor from simulation
-wlabel = 4
+wlabel = 2
 rnd_num = np.random.choice(np.where(labels[:xyz] == wlabel)[0])
 print(rnd_num)
 nearest_neighbor_index = np.argmin(np.linalg.norm(embedding[xyz:] - embedding[rnd_num], axis=1))
 fig, ax = plt.subplots(1, 2, figsize=(3,2))
-ax[0].imshow(data_post_011_norm.reshape(xyz , 42, 42)[rnd_num])
+ax[0].imshow(data_post_011_norm.reshape(xyz , 50, 50)[rnd_num])
 ax[0].title.set_text('real')
 ax[0].axis('off')
 ax[1].imshow(simulations[nearest_neighbor_index])
@@ -234,10 +236,15 @@ import numpy as np
 root = tkinter.Tk()
 root.wm_title("Embedding in Tk")
 
-fig = Figure(figsize=(5, 4), dpi=100)
+fig, ax = plt.subplots(1, 2, figsize=(3, 3), dpi=100)
 t = np.arange(0, 3, .01)
-ax = fig.add_subplot()
-img = ax.imshow(data[0, 0, 0])
+
+position = np.zeros(data.shape[1:3])
+ax[0].imshow(position)
+size = 150
+ax[1].imshow(imutils.rotate(data[2, 0, 0], int(82), com)[com[0] - size:com[0] + size, com[1] - size:com[1] + size])
+ax[0].axis('off')
+ax[1].axis('off')
 
 canvas = FigureCanvasTkAgg(fig, master=root)  # A tk.DrawingArea.
 canvas.draw()
@@ -252,12 +259,20 @@ canvas.mpl_connect("key_press_event", key_press_handler)
 
 button_quit = tkinter.Button(master=root, text="Quit", command=root.destroy)
 
-
+com = get_center(data[2, 10, 0], circle)
+com = list(map(int, com))
 def update_frequency(new_val):
     new_val = int(new_val)
-    ax.clear()
+    position = np.zeros(data.shape[1:3])
+    position[new_val % 38, new_val // 38] = 1
+    ax[0].clear()
+    ax[1].clear()
     # ax.imshow(imutils.rotate(data[0, 20, 0], int(new_val), com[200]))
-    ax.imshow(imutils.rotate(data.sum(axis=2)[2, new_val], int(82), com[200]))
+    # ax.imshow(imutils.rotate(data.sum(axis=2)[2, new_val], int(82), com[200]))
+    ax[0].imshow(position)
+    ax[1].imshow(imutils.rotate(data[2, new_val % 38, new_val // 38], int(82), com)[com[0] - size:com[0] + size, com[1] - size:com[1] + size])
+    ax[0].axis('off')
+    ax[1].axis('off')
     # required to update canvas and attached toolbar!
     canvas.draw()
 
