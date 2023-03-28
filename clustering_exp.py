@@ -8,7 +8,7 @@ from main import *
 
 # matplotlib.use('QtAgg')
 #%%
-data = load_data(r"/mnt/c/Users/em3-user/Documents/set2_SRO")
+data = load_data(r"/mnt/c/Users/em3-user/Documents/set4_Ru")
     #%%
 data_post = fn_on_resized(data, imutils.rotate, 81)
 
