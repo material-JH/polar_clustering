@@ -8,7 +8,8 @@ from main import *
 import cv2
 # matplotlib.use('QtAgg')
 #%%
-data_post_011_norm = np.load('output/set2_SRO_011.npy')[::2,:,::2]
+data_post_011_norm = np.load('output/set2_SRO_011.npy')
+data_post_011_norm = np.concatenate([data_post_011_norm, np.load('output/set4_Ru_011.npy')], axis=0)
 
 def plot_vertical(data):
     fig, axs = plt.subplots(nrows=8, ncols=5, figsize=(8, 12))
@@ -21,9 +22,8 @@ def plot_vertical(data):
 plot_vertical(data_post_011_norm)
 #%%
 
-
 n = 11
-simulations = np.load('output/disk_011_4.npy')
+simulations = np.load('output/disk_011_3.npy')
 simulations = normalize_Data(simulations)[:,:,:,0,0]
 simulations = fn_on_resized(simulations, cv2.GaussianBlur, (n, n), 0)[:,:,:,0,0]
 simulations = fn_on_resized(simulations.reshape((1, 1, *simulations.shape)), resize, (50, 50))[0,0,:]
@@ -50,16 +50,19 @@ for img_gpu in range(n_row):
     
 #%%
 n_neighbors = 15
-n_components = 3
+n_components = 2
 min_dist = 0.2
+n_clusters = 8
+gamma = 0.3
 # embedding, labels = get_emb_lbl_real(data_post_002)
 xyz = reduce((lambda x, y: x * y), data_post_011_norm.shape[:3])
 new = np.concatenate([data_post_011_norm.reshape(xyz , -1), simulations.reshape(len(simulations), -1)], axis=0)
 # embedding, labels = get_emb_lbl(simulations.reshape(len(simulations), -1), n_neighbors=15, min_dist=0.1 * 5,)
 # embedding, labels = get_emb_lbl(data_post_011_norm.reshape(xyz , -1), n_neighbors=15, min_dist=0.1, n_components=3)
-embedding, labels = get_emb_lbl(new, n_neighbors=n_neighbors, min_dist=min_dist, n_components=n_components)
+embedding = get_emb(new, n_neighbors=n_neighbors, min_dist=min_dist, n_components=n_components)
+labels = get_lbl(embedding, n_clusters=n_clusters, gamma=gamma)
 #%%
-ax1, ax2 = 1, 2
+ax1, ax2 = 0, 1
 plt.scatter(embedding[:xyz, ax1], embedding[:xyz, ax2])
 plt.scatter(embedding[xyz:, ax1], embedding[xyz:, ax2])
 #%%
@@ -77,24 +80,21 @@ for n in range(-len(simulations), 0, 100):
     test[nearest_neighbor_index] = 1
 
 #%%
-
-from sklearn.cluster import SpectralClustering
-spectral = SpectralClustering(n_clusters=6, affinity='rbf', assign_labels='kmeans', gamma=0.5)
-labels = spectral.fit_predict(embedding)
-# embedding, labels = get_emb_lbl(data_post, n_neighbors, n_components, min_dist)
-#%%
 alpha = 1
 alpha_sim = 0.5
 simLen = len(labels) - xyz
 labels_exp = labels[:xyz]
 embedding_exp = embedding[:xyz]
-plt.scatter(embedding_exp[labels_exp == 0, ax1], embedding_exp[labels_exp == 0, ax2], alpha=alpha, c='#40004f', label='Cluster 0')
-plt.scatter(embedding_exp[labels_exp == 1, ax1], embedding_exp[labels_exp == 1, ax2], alpha=alpha, c='#424186', label='Cluster 1')
-plt.scatter(embedding_exp[labels_exp == 2, ax1], embedding_exp[labels_exp == 2, ax2], alpha=alpha, c='#2a778e', label='Cluster 2')
-plt.scatter(embedding_exp[labels_exp == 3, ax1], embedding_exp[labels_exp == 3, ax2], alpha=alpha, c='#22a785', label='Cluster 3')
-plt.scatter(embedding_exp[labels_exp == 4, ax1], embedding_exp[labels_exp == 4, ax2], alpha=alpha, c='#77d153', label='Cluster 4')
-plt.scatter(embedding_exp[labels_exp == 5, ax1], embedding_exp[labels_exp == 5, ax2], alpha=alpha, c='yellow', label='Cluster 5')
+for i in set(labels):
+    plt.scatter(embedding_exp[labels_exp == i, ax1], embedding_exp[labels_exp == i, ax2], alpha=alpha, label=f'Cluster {i}')
+
 plt.scatter(embedding[xyz:, ax1], embedding[xyz:, ax2], alpha=alpha_sim, label='simulation', c='red')
+
+# plt.scatter(embedding_exp[labels_exp == 1, ax1], embedding_exp[labels_exp == 1, ax2], alpha=alpha, c='#424186', label='Cluster 1')
+# plt.scatter(embedding_exp[labels_exp == 2, ax1], embedding_exp[labels_exp == 2, ax2], alpha=alpha, c='#2a778e', label='Cluster 2')
+# plt.scatter(embedding_exp[labels_exp == 3, ax1], embedding_exp[labels_exp == 3, ax2], alpha=alpha, c='#22a785', label='Cluster 3')
+# plt.scatter(embedding_exp[labels_exp == 4, ax1], embedding_exp[labels_exp == 4, ax2], alpha=alpha, c='#77d153', label='Cluster 4')
+# plt.scatter(embedding_exp[labels_exp == 5, ax1], embedding_exp[labels_exp == 5, ax2], alpha=alpha, c='yellow', label='Cluster 5')
 # plt.scatter(embedding[xyz:, 0], embedding[xyz:, 1], alpha=0.8, c='Red', label='simulation')
 # plt.scatter(embedding[xyz + simLen // 2:, 0], embedding[xyz + simLen // 2:, 1], alpha=alpha_sim, label='up', c='blue')
 
@@ -116,8 +116,8 @@ ax[1].title.set_text('simulation')
 ax[1].axis('off')
 plt.show()
 #%%
-fig, axs = plt.subplots(nrows=1, ncols=3, figsize=(8, 4))
-for n, img_gpu in enumerate(labels[:xyz].reshape(data_post_011_norm.shape[:3])):
+fig, axs = plt.subplots(nrows=1, ncols=5, figsize=(8, 4))
+for n, img_gpu in enumerate(labels[:xyz].reshape(data_post_011_norm.shape[:3])[5:]):
     # i = np.concatenate([i, [list([labels[1900]]) * 10]], axis=0)
     # i = np.concatenate([i, [list([labels[1901]]) * 10]], axis=0)
     im = axs[n].imshow(img_gpu)

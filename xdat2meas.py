@@ -50,22 +50,23 @@ plt.show()
 
 for thickness_layer in range(78, 83):
     for tilt_angle in np.linspace(-0.05, 0.05, 5):
-        for n, atoms in enumerate(atoms_list[::25]):
-            atoms = copy.deepcopy(atoms)
-            stem.set_atom(atoms)
-            polar = round(get_polar(atoms))
-            cell = stem.atoms.cell
-            stem.repeat_cell((round(repeat_layer * cell[1,1] / cell[0,0]), repeat_layer, thickness_layer))
-            stem.rotate_atom(tilt_angle, 'x')
-            print(cell)
-            measurement_np = main(stem)
-            np.save(f'output/DP_{thickness_layer}_{round(tilt_angle, 4)}_{polar}_{n}.npy', measurement_np)
-            gc.collect()
+        for direction in ['x', 'y']:
+            for n, atoms in enumerate(atoms_list[::20]):
+                atoms = copy.deepcopy(atoms)
+                stem.set_atom(atoms)
+                polar = round(get_polar(atoms))
+                cell = stem.atoms.cell
+                stem.repeat_cell((round(repeat_layer * cell[1,1] / cell[0,0]), repeat_layer, thickness_layer))
+                stem.rotate_atom(tilt_angle, direction)
+                print(cell)
+                measurement_np = main(stem)
+                np.save(f'output/DP_{thickness_layer}_{round(tilt_angle, 4)}_{direction}_{polar}_{n}.npy', measurement_np)
+                gc.collect()
 print('done')
 # %%
 import glob
 import os
 for f in glob.glob('output/*'):
-    if f.__contains__('DP_100') or f.__contains__('DP_23'):
+    if f.__contains__('DP_'):
         os.remove(f)
 # %%

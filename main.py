@@ -1,11 +1,13 @@
 import imutils
 import hyperspy.api as hs
 import os
-from sklearn.cluster import KMeans, SpectralClustering
-from sklearn.cluster import MiniBatchKMeans
 import numpy as np
 import matplotlib.pyplot as plt
 import umap
+from cuml.manifold import UMAP as cuUMAP
+from cuml.cluster import KMeans as cuKMeans
+from cuml.cluster import DBSCAN as cuDBSCAN
+from sklearn.cluster import SpectralClustering
 from functools import reduce
 
 try:
@@ -42,17 +44,6 @@ def get_center(arr, conv):
     # Find the maximum position
     max_pos = np.unravel_index(np.argmax(result.get()), result.shape)
     return (max_pos[0], max_pos[1])
-
-def one_round_clustering(n_clusters, manifold_data):
-    if np.shape(manifold_data)[1] > 1000:
-        manifold_clustering_result = MiniBatchKMeans(n_clusters=n_clusters).fit(manifold_data)
-    else:
-        manifold_clustering_result = KMeans(n_clusters=n_clusters).fit(manifold_data)
-
-    labels = manifold_clustering_result.labels_ + 1
-
-    return labels, manifold_clustering_result.cluster_centers_
-
 
 def get_rotation_matrix(i_v, unit=None):
     # From http://www.j3d.org/matrix_faq/matrfaq_latest.html#Q38
@@ -141,31 +132,15 @@ def fn_on_resized(data, fn, *args, **kwargs):
 
     return np.reshape(output, (*shape[:3], int(np.sqrt(output.shape[-1])), -1))
 
-
-
-def get_emb_lbl_real(data,n_components=2, n_neighbors=15, min_dist=0.1):
-    reducer = umap.UMAP(n_components= n_components,
-                        n_neighbors = n_neighbors,
-                        min_dist = min_dist)
-
-    xyz = reduce((lambda x, y: x * y), data.shape[:3])
-
-    embedding = reducer.fit_transform(data.reshape(xyz , -1))
-    # Assuming `embedding` contains the reduced dimensional representation of your data
-    kmeans = KMeans(n_clusters=2)
-    kmeans.fit(embedding)
-    # Assign cluster labels to each data point
-    labels = kmeans.labels_
-    return embedding, labels
-
-def get_emb_lbl(data,n_components=2, n_neighbors=15, min_dist=0.1, n_clusters=2):
-    reducer = umap.UMAP(n_components= n_components,
+def get_emb(data,n_components=2, n_neighbors=15, min_dist=0.1):
+    reducer = cuUMAP(n_components= n_components,
                         n_neighbors = n_neighbors,
                         min_dist = min_dist)
 
     embedding = reducer.fit_transform(data)
-    # Assuming `embedding` contains the reduced dimensional representation of your data
-    spectral = SpectralClustering(n_clusters=n_clusters, affinity='rbf', assign_labels='kmeans')
-    labels = spectral.fit_predict(embedding)
+    return embedding
 
-    return embedding, labels
+def get_lbl(emb, n_clusters=2, gamma=0.5):
+    spectral = SpectralClustering(n_clusters=n_clusters, affinity='rbf', assign_labels='kmeans', gamma=gamma)
+    labels = spectral.fit_predict(emb)
+    return labels
