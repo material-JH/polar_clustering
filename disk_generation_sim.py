@@ -10,8 +10,9 @@ name = []
 n = 0
 for file in os.listdir('output'):
     # if file.__contains__('DP_dn') or file.__contains__('DP_up'):
-    if file.__contains__('DP_dn'):
+    if file.__contains__('DP_'):
         arr.append(np.load(f'output/{file}'))
+        print(file)
         name.append(file)
         n += 1
 for n in range(len(arr)):
@@ -38,6 +39,7 @@ for i in range(4):
             plt.show()
 # %%
 np.save('output/disk_011_4.npy', np.array(disk))
+print('saved')
 # %%
 
 fig, ax = plt.subplots(2, 5)
