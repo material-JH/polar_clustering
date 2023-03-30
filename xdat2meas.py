@@ -1,9 +1,11 @@
 #%%
 import gc
+import random
 import cv2
 from stem4D import *
 from ase import Atoms
 import copy
+from main import *
 
 def get_polar(atom:Atoms):
     anum = atom.get_atomic_numbers()
@@ -34,39 +36,57 @@ N = 512
 lattice_constant = 3.94513
 ######################
 repeat_layer = 20
-atoms_list = read('xdat/XDATCAR', index=':')
+
+xdat_type = 'e'
+
+atoms_list = read(f'xdat/XDATCAR_{xdat_type}', index=':')
 stem = Stem('gpu')
+
+num_cell = 50
+pos = np.zeros((len(atoms_list),len(atoms_list[0]), 3))
+for i, atoms in enumerate(atoms_list):
+    pos[i] = copy.deepcopy(atoms.get_positions()) - atoms.get_center_of_mass()
+
+emb = get_emb(pos.reshape(len(atoms_list), -1), min_dist=0.01)
+lbl = get_lbl(emb, num_cell)
+
+selected_atoms = []
+
+for i in range(num_cell):
+    selected_atoms.append(atoms_list[random.choice(np.where(lbl == i)[0])])
+
 # repeat_layer = 5
 # thickness_layer = 23
 # repeat_layer = 10
 # thickness_layer = 78
 # atoms_list = read('xdat/XDATCAR_strain2', index=':')
-
+#%%
 polar_arr = []
-for atom in atoms_list:
+for atom in selected_atoms:
     polar_arr.append(get_polar(atom))
 plt.plot(polar_arr)
 plt.show()
-thickness_layer = 80
-# for thickness_layer in range(78, 83):
-for tilt_angle in np.linspace(-0.05, 0.05, 5):
-    for direction in ['x', 'y']:
-        for n, atoms in enumerate(atoms_list[::100]):
-            atoms = copy.deepcopy(atoms)
-            stem.set_atom(atoms)
-            polar = round(get_polar(atoms))
-            cell = stem.atoms.cell
-            stem.repeat_cell((round(repeat_layer * cell[1,1] / cell[0,0]), repeat_layer, thickness_layer))
-            stem.rotate_atom(tilt_angle, direction)
-            print(cell)
-            measurement_np = main(stem)
-            np.save(f'output/DP_test_{thickness_layer}_{round(tilt_angle, 4)}_{direction}_{polar}_{n}.npy', measurement_np)
-            gc.collect()
+# thickness_layer = 80
+for thickness_layer in range(79, 82):
+    for tilt_angle in np.linspace(-0.05, 0.05, 5):
+        for direction in ['x', 'y']:
+            for n, atoms in enumerate(selected_atoms):
+                atoms = copy.deepcopy(atoms)
+                atoms.cell = np.diag(np.diag(atoms.cell))
+                stem.set_atom(atoms)
+                polar = round(get_polar(atoms))
+                cell = stem.atoms.cell
+                stem.repeat_cell((round(repeat_layer * cell[1,1] / cell[0,0]), repeat_layer, thickness_layer))
+                stem.rotate_atom(tilt_angle, direction)
+                print(cell)
+                measurement_np = main(stem)
+                np.save(f'output/DP_{xdat_type}_{thickness_layer}_{round(tilt_angle, 4)}_{direction}_{polar}_{n}.npy', measurement_np)
+                gc.collect()
 print('done')
 # %%
 import glob
 import os
 for f in glob.glob('output/*'):
-    if f.__contains__('DP_test_'):
+    if f.__contains__('DP_e_') or f.__contains__('DP_a_') or f.__contains__('DP_c_'):
         os.remove(f)
 # %%

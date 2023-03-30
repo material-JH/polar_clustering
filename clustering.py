@@ -23,7 +23,7 @@ plot_vertical(data_post_011_norm)
 #%%
 
 n = 11
-simulations = np.load('output/disk_011_3.npy')
+simulations = np.load('output/disk_011_4.npy')
 simulations = normalize_Data(simulations)[:,:,:,0,0]
 simulations = fn_on_resized(simulations, cv2.GaussianBlur, (n, n), 0)[:,:,:,0,0]
 simulations = fn_on_resized(simulations.reshape((1, 1, *simulations.shape)), resize, (50, 50))[0,0,:]
@@ -49,9 +49,9 @@ for img_gpu in range(n_row):
         ax[j, img_gpu].axis('off')
     
 #%%
-n_neighbors = 15
+n_neighbors = 10
 n_components = 2
-min_dist = 0.2
+min_dist = 0.01
 n_clusters = 8
 gamma = 0.3
 # embedding, labels = get_emb_lbl_real(data_post_002)
@@ -80,6 +80,7 @@ for n in range(-len(simulations), 0, 100):
     test[nearest_neighbor_index] = 1
 
 #%%
+
 alpha = 1
 alpha_sim = 0.5
 simLen = len(labels) - xyz
@@ -104,7 +105,7 @@ plt.legend()
 plt.show()
 #%%
 # get nearest neighbor from simulation
-wlabel = 4
+wlabel = 0
 rnd_num = np.random.choice(np.where(labels[:xyz] == wlabel)[0])
 nearest_neighbor_index = np.argmin(np.linalg.norm(embedding[xyz:] - embedding[rnd_num], axis=1))
 fig, ax = plt.subplots(1, 2, figsize=(3,2))
@@ -117,10 +118,10 @@ ax[1].axis('off')
 plt.show()
 #%%
 fig, axs = plt.subplots(nrows=1, ncols=5, figsize=(8, 4))
-for n, img_gpu in enumerate(labels[:xyz].reshape(data_post_011_norm.shape[:3])[5:]):
+for n, img_gpu in enumerate(labels[:xyz].reshape(data_post_011_norm.shape[:3])[:5]):
     # i = np.concatenate([i, [list([labels[1900]]) * 10]], axis=0)
     # i = np.concatenate([i, [list([labels[1901]]) * 10]], axis=0)
-    im = axs[n].imshow(img_gpu)
+    im = axs[n].imshow(img_gpu, vmin=0, vmax=n_clusters)
     axs[n].axis('off')
 from matplotlib.ticker import MaxNLocator
 cbar1 = fig.colorbar(im, ax=axs[n], format='%d')    
@@ -223,3 +224,15 @@ toolbar.pack(side=tkinter.BOTTOM, fill=tkinter.X)
 canvas.get_tk_widget().pack(side=tkinter.TOP, fill=tkinter.BOTH, expand=True)
 
 tkinter.mainloop()
+
+#%%
+alpha = 0.1
+alpha_sim = 0.5
+labels_exp = labels[:xyz]
+embedding_exp = embedding[:xyz]a
+plt.scatter(embedding_exp[:xyz // 2,0], embedding_exp[:xyz //2, 1], alpha=alpha, label=f'set2')
+plt.scatter(embedding_exp[xyz // 2:,0], embedding_exp[xyz //2:, 1], alpha=alpha, label=f'set4')
+
+plt.title('UMAP + K-means clustering')
+plt.legend()
+plt.show()
