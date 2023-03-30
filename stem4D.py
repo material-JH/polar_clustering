@@ -55,8 +55,8 @@ class Stem:
                       projection='infinite',
                       device=self.device).build(max_batch=32)
 
-    def set_probe(self):
-        self.probe = Probe(energy=300e3, semiangle_cutoff=2.16, defocus=0, focal_spread=20, device=self.device, rolloff=0.)
+    def set_probe(self, energy=300e3, semiangle_cutoff=2.16, defocus=0, focal_spread=20, rolloff=0., gaussian_spread=5):
+        self.probe = Probe(device=self.device, rolloff=rolloff, gaussian_spread=gaussian_spread, energy=energy, semiangle_cutoff=semiangle_cutoff, defocus=defocus, focal_spread=focal_spread)
         self.probe.grid.match(self.potential)
 
     def set_scan(self, scan_width, angle=None):
