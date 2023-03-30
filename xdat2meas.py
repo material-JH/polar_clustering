@@ -37,12 +37,12 @@ lattice_constant = 3.94513
 ######################
 repeat_layer = 20
 
-xdat_type = 'e'
+xdat_type = 'c'
 
 atoms_list = read(f'xdat/XDATCAR_{xdat_type}', index=':')
 stem = Stem('gpu')
 
-num_cell = 50
+num_cell = 25
 pos = np.zeros((len(atoms_list),len(atoms_list[0]), 3))
 for i, atoms in enumerate(atoms_list):
     pos[i] = copy.deepcopy(atoms.get_positions()) - atoms.get_center_of_mass()
@@ -60,7 +60,6 @@ for i in range(num_cell):
 # repeat_layer = 10
 # thickness_layer = 78
 # atoms_list = read('xdat/XDATCAR_strain2', index=':')
-#%%
 polar_arr = []
 for atom in selected_atoms:
     polar_arr.append(get_polar(atom))
@@ -74,6 +73,7 @@ for thickness_layer in range(79, 82):
                 atoms = copy.deepcopy(atoms)
                 atoms.cell = np.diag(np.diag(atoms.cell))
                 stem.set_atom(atoms)
+                stem.rotate_atom(90, 'x')   
                 polar = round(get_polar(atoms))
                 cell = stem.atoms.cell
                 stem.repeat_cell((round(repeat_layer * cell[1,1] / cell[0,0]), repeat_layer, thickness_layer))
@@ -87,6 +87,6 @@ print('done')
 import glob
 import os
 for f in glob.glob('output/*'):
-    if f.__contains__('DP_e_') or f.__contains__('DP_a_') or f.__contains__('DP_c_'):
+    if f.__contains__('DP_g') or f.__contains__('DP_a_') or f.__contains__('DP_c_'):
         os.remove(f)
 # %%

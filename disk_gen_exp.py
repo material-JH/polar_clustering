@@ -20,8 +20,8 @@ data_post = crop_from_center(data_post, 250, com)
 #%%
 disk_pos_002 = [7, 100]
 disk_pos_011 = [55, 145]
-data_post_002 = crop(data_post, 50, disk_pos_002)
-data_post_011 = crop(data_post, 50, disk_pos_011)
+data_post_002 = crop(data_post, 50, disk_pos_002, list=True)
+data_post_011 = crop(data_post, 50, disk_pos_011, list=True)
 data_post_002_norm = normalize_Data(data_post_002)
 data_post_011_norm = normalize_Data(data_post_011)
 n = 9

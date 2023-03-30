@@ -1,3 +1,4 @@
+import random
 import imutils
 import hyperspy.api as hs
 import os
@@ -45,36 +46,6 @@ def get_center(arr, conv):
     max_pos = np.unravel_index(np.argmax(result.get()), result.shape)
     return (max_pos[0], max_pos[1])
 
-def get_rotation_matrix(i_v, unit=None):
-    # From http://www.j3d.org/matrix_faq/matrfaq_latest.html#Q38
-    if unit is None:
-        unit = [1.0, 0.0, 0.0]
-    # Normalize vector length
-    i_v /= np.linalg.norm(i_v)
-
-    # Get axis
-    uvw = np.cross(i_v, unit)
-
-    # compute trig values - no need to go through arccos and back
-    rcos = np.dot(i_v, unit)
-    rsin = np.linalg.norm(uvw)
-
-    # normalize and unpack axis
-    if not np.isclose(rsin, 0):
-        uvw /= rsin
-    u, v, w = uvw
-
-    # Compute rotation matrix - re-expressed to show structure
-    return (
-            rcos * np.eye(3) +
-            rsin * np.array([
-        [0, -w, v],
-        [w, 0, -u],
-        [-v, u, 0]
-    ]) +
-            (1.0 - rcos) * uvw[:, None] * uvw[None, :]
-    )
-
 
 def normalize_Data(data):
     return fn_on_resized(data, _normalize_Data)
@@ -100,16 +71,22 @@ def _crop_from_center(data, size, com, i):
     return data[pos_y - size // 2: pos_y + size // 2,
                 pos_x - size // 2: pos_x + size // 2]
 
-def crop_from_center(data, size, com):
-    return fn_on_resized(data, _crop_from_center, size, com, list=True)
+def crop_from_center(data, size, com, list=False):
+    if list:
+        return fn_on_resized(data, _crop_from_center, size, com, list=True)
+    else:
+        return _crop_from_center(data, size, com, 0)
                 
 def _crop(data, size, position):
     return data[position[0]:position[0] + size, 
                 position[1]:position[1] + size]
 
-def crop(data, size, position):
+def crop(data, size, position, list=False):
     # this is a function that can be used to apply a crop function on a 4D array
-    return fn_on_resized(data, _crop, size, position)
+    if list:
+        return fn_on_resized(data, _crop, size, position)
+    else:
+        return _crop(data, size, position)
 
 def rotate_by_cen(data, angle, com, i):
     # this is a function that can be used to apply a function for rotation on a 4D array
@@ -128,9 +105,9 @@ def fn_on_resized(data, fn, *args, **kwargs):
             output.append(fn(tmp[i], *args))
         
     output = np.array(output)
-    output = np.reshape(output, (*shape[:3], -1))
+    output = np.reshape(output, (*shape[:-2], output.shape[-2], output.shape[-1]))
 
-    return np.reshape(output, (*shape[:3], int(np.sqrt(output.shape[-1])), -1))
+    return output
 
 def get_emb(data,n_components=2, n_neighbors=15, min_dist=0.1):
     reducer = cuUMAP(n_components= n_components,
@@ -144,3 +121,14 @@ def get_lbl(emb, n_clusters=2, gamma=0.5):
     spectral = SpectralClustering(n_clusters=n_clusters, affinity='rbf', assign_labels='kmeans', gamma=gamma)
     labels = spectral.fit_predict(emb)
     return labels
+
+def select_data(data, eps=0.2, min_samples=1):
+    dbscan = cuDBSCAN(eps=eps, min_samples=min_samples)
+    emb = get_emb(data.reshape((len(data), -1)))
+    fit = dbscan.fit_predict(emb)
+    selected_data = []
+
+    for i in set(fit):
+        selected_data.append(data[random.choice(np.where(fit == i)[0])])
+
+    return np.array(selected_data)
