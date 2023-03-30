@@ -10,7 +10,7 @@ name = []
 n = 0
 for file in os.listdir('output'):
     # if file.__contains__('DP_dn') or file.__contains__('DP_up'):
-    if file.__contains__('DP_'):
+    if file.__contains__('DP_test'):
         arr.append(np.load(f'output/{file}'))
         print(file)
         name.append(file)
@@ -33,7 +33,7 @@ for i in range(4):
     for n in range(len(arr)):
         disk.append(arr[n][start_pos[0]:start_pos[0] + rad,
                         start_pos[1]:start_pos[1] + rad])
-        if n % 20 == 0:
+        if n % 10 == 0:
             plt.imshow(disk[n])
             plt.axis('off')
             plt.show()

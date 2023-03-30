@@ -19,10 +19,10 @@ def get_polar(atom:Atoms):
     
     return polar
     
-def main(stem):
+def main(stem: Stem):
     stem.generate_pot(N, lattice_constant/2)
-    stem.set_probe()
-    stem.set_scan((2 * 10, 2 * 10))
+    stem.set_probe(gaussian_spread=10, defocus=100)
+    stem.set_scan((2, 2))
     measurement = stem.scan(batch_size=32)
     new_size = min(int(N * measurement.calibrations[2].sampling / measurement.calibrations[3].sampling),
                     int(N * measurement.calibrations[3].sampling / measurement.calibrations[2].sampling))
@@ -47,26 +47,26 @@ for atom in atoms_list:
     polar_arr.append(get_polar(atom))
 plt.plot(polar_arr)
 plt.show()
-
-for thickness_layer in range(78, 83):
-    for tilt_angle in np.linspace(-0.05, 0.05, 5):
-        for direction in ['x', 'y']:
-            for n, atoms in enumerate(atoms_list[::20]):
-                atoms = copy.deepcopy(atoms)
-                stem.set_atom(atoms)
-                polar = round(get_polar(atoms))
-                cell = stem.atoms.cell
-                stem.repeat_cell((round(repeat_layer * cell[1,1] / cell[0,0]), repeat_layer, thickness_layer))
-                stem.rotate_atom(tilt_angle, direction)
-                print(cell)
-                measurement_np = main(stem)
-                np.save(f'output/DP_{thickness_layer}_{round(tilt_angle, 4)}_{direction}_{polar}_{n}.npy', measurement_np)
-                gc.collect()
+thickness_layer = 80
+# for thickness_layer in range(78, 83):
+for tilt_angle in np.linspace(-0.05, 0.05, 5):
+    for direction in ['x', 'y']:
+        for n, atoms in enumerate(atoms_list[::100]):
+            atoms = copy.deepcopy(atoms)
+            stem.set_atom(atoms)
+            polar = round(get_polar(atoms))
+            cell = stem.atoms.cell
+            stem.repeat_cell((round(repeat_layer * cell[1,1] / cell[0,0]), repeat_layer, thickness_layer))
+            stem.rotate_atom(tilt_angle, direction)
+            print(cell)
+            measurement_np = main(stem)
+            np.save(f'output/DP_test_{thickness_layer}_{round(tilt_angle, 4)}_{direction}_{polar}_{n}.npy', measurement_np)
+            gc.collect()
 print('done')
 # %%
 import glob
 import os
 for f in glob.glob('output/*'):
-    if f.__contains__('DP_'):
+    if f.__contains__('DP_test_'):
         os.remove(f)
 # %%
