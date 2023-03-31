@@ -10,15 +10,15 @@ from main import *
 import cv2
 # matplotlib.use('QtAgg')
 #%%
-data_post_011_norm = np.load('output/set4_Ru_011.npy')
+data_post_011_norm = np.load('output/set2_SRO_011.npy')
 # data_post_011_norm = np.concatenate([data_post_011_norm, np.load('output/set4_Ru_011.npy')], axis=0)
 
 def plot_vertical(data):
     fig, axs = plt.subplots(nrows=8, ncols=5, figsize=(8, 12))
-    for i in range(0, 16, 2):
+    for i in range(0, 40, 5):
         for j in range(5):
-            axs[i // 2, j].imshow(data[2, i, j])
-            axs[i // 2, j].axis('off')
+            axs[i // 5, j].imshow(data[2, i, j])
+            axs[i // 5, j].axis('off')
     plt.show()
     
 plot_vertical(data_post_011_norm)
