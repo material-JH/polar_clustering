@@ -10,8 +10,8 @@ from main import *
 import cv2
 # matplotlib.use('QtAgg')
 #%%
-data_post_011_norm = np.load('output/set2_SRO_011.npy')
-data_post_011_norm = np.concatenate([data_post_011_norm, np.load('output/set4_Ru_011.npy')], axis=0)
+data_post_011_norm = np.load('output/set4_Ru_011.npy')
+# data_post_011_norm = np.concatenate([data_post_011_norm, np.load('output/set4_Ru_011.npy')], axis=0)
 
 def plot_vertical(data):
     fig, axs = plt.subplots(nrows=8, ncols=5, figsize=(8, 12))
