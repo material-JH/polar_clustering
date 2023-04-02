@@ -126,7 +126,7 @@ button_quit.pack(side=tkinter.BOTTOM)
 slider_update.pack(side=tkinter.BOTTOM, fill=tkinter.BOTH)
 toolbar.pack(side=tkinter.BOTTOM, fill=tkinter.X)
 canvas.get_tk_widget().pack(side=tkinter.TOP, fill=tkinter.BOTH, expand=True)
-
+ 
 tkinter.mainloop()
 # %%
 plt.imshow(arr[220])
