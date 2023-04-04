@@ -9,7 +9,7 @@ from skimage.transform import resize
 #%%
 
 arr = []
-name = []
+fnames = []
 n = 0
 
 circle = get_circle_conv(45)
@@ -17,7 +17,7 @@ for file in os.listdir('output'):
     # if file.__contains__('DP_dn') or file.__contains__('DP_up'):
     if file.__contains__('DP_a') or file.__contains__('DP_c') or file.__contains__('DP_g'):
         arr.append(np.load(f'output/{file}'))
-        name.append(file)
+        fnames.append(file)
         n += 1
 for n in range(len(arr)):
     # arr[n] = resize(arr[n][0,0],  [r + 150 for r in arr[n][0,0].shape])
@@ -47,6 +47,7 @@ for i in range(4):
         up = np.sum(crop(arr[n], rad, start_pos_m002))
         
         img = crop(arr[n], rad, start_pos_011)
+        name = fnames[n]
         if dn > up:
             disk_dn.append(img)
         else:
