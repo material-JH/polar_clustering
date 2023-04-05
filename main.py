@@ -110,7 +110,7 @@ def fn_on_resized(data, fn, *args, **kwargs):
 def get_emb(data,n_components=2, n_neighbors=15, min_dist=0.1):
     reducer = cuUMAP(n_components= n_components,
                         n_neighbors = n_neighbors,
-                        min_dist = min_dist)
+                        min_dist = min_dist, init='random')
 
     embedding = reducer.fit_transform(data)
     return embedding

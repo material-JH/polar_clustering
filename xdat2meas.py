@@ -37,7 +37,7 @@ lattice_constant = 3.94513
 ######################
 repeat_layer = 20
 
-xdat_type = 'c'
+xdat_type = 'g'
 
 atoms_list = read(f'xdat/XDATCAR_{xdat_type}', index=':')
 stem = Stem('gpu')
@@ -55,11 +55,6 @@ selected_atoms = []
 for i in range(num_cell):
     selected_atoms.append(atoms_list[random.choice(np.where(lbl == i)[0])])
 
-# repeat_layer = 5
-# thickness_layer = 23
-# repeat_layer = 10
-# thickness_layer = 78
-# atoms_list = read('xdat/XDATCAR_strain2', index=':')
 polar_arr = []
 for atom in selected_atoms:
     polar_arr.append(get_polar(atom))
@@ -67,7 +62,7 @@ plt.plot(polar_arr)
 plt.show()
 # thickness_layer = 80
 for thickness_layer in range(79, 82):
-    for tilt_angle in np.linspace(-0.05, 0.05, 5):
+    for tilt_angle in np.linspace(-0.1, -0.075, 2):
         for direction in ['x', 'y']:
             for n, atoms in enumerate(selected_atoms):
                 atoms = copy.deepcopy(atoms)

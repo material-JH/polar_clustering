@@ -29,10 +29,14 @@ start_pos_m002 = [212, 113]
 arr = np.array(arr)
 rad = 54
 #%%
-disk_dn = []
-disk_up = []
-dn_ins = []
-up_ins = []
+sep = {}
+for n, i in enumerate(set([i.split('_')[3] for i in fnames])):
+    sep[i] = n
+
+disk = {}
+for i in sep.keys():
+    disk[i] = []
+    
 for i in range(4):
     arr = arr[::-1,:]
     if i % 2 == 0:
@@ -48,10 +52,7 @@ for i in range(4):
         
         img = crop(arr[n], rad, start_pos_011)
         name = fnames[n]
-        if dn > up:
-            disk_dn.append(img)
-        else:
-            disk_up.append(img)
+        disk[name.split('_')[3]].append(img)
     # prime = get_center(disk[0], circle)
     # for i in range(len(disk)):
     #     disk[i] = np.roll(disk[i], prime[0] - get_center(disk[i], circle)[0], axis=0)
@@ -59,13 +60,12 @@ for i in range(4):
     #     print(get_center(disk[i], circle))
     # print(prime)
 
-disk_dn = np.array(disk_dn)
-disk_up = np.array(disk_up)
+for i in sep.keys():
+    disk[i] = np.array(disk[i])
+    print(len(disk[i]))
 
-print(len(disk_dn), len(disk_up))
 # %%
-np.save('output/disk_011_4_dn.npy', np.array(disk_dn))
-np.save('output/disk_011_4_up.npy', np.array(disk_up))
+np.savez('output/disk_011_5.npz', **disk)
 print('saved')
 
 #%%
