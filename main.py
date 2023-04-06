@@ -4,7 +4,6 @@ import hyperspy.api as hs
 import os
 import numpy as np
 import matplotlib.pyplot as plt
-import umap
 from cuml.manifold import UMAP as cuUMAP
 from cuml.cluster import KMeans as cuKMeans
 from cuml.cluster import DBSCAN as cuDBSCAN

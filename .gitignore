@@ -6,3 +6,4 @@ __pycache__/
 *.npy
 
 *.cif
+xdat/XDATCAR_large

@@ -1,7 +1,6 @@
 #%%
 import gc
 import random
-import cv2
 from stem4D import *
 from ase import Atoms
 import copy
@@ -60,10 +59,10 @@ stem = Stem('gpu')
 
 
 for xdat_type in ['a', 'c', 'g']:
-    selected_atoms = read(f'xdat/XDATCAR_{xdat_type}', index='::2')
-    # selected_atoms = select_atom(atoms_list)
-    for thickness_layer in tqdm(range(78, 83, 2), desc=f'{xdat_type} thickness :'):
-        for tilt_angle in np.linspace(-0.10, 0, 3):
+    atoms_list = read(f'xdat/XDATCAR_{xdat_type}', index='::2')
+    selected_atoms = select_atom(atoms_list)
+    for thickness_layer in range(78, 83, 2):
+        for tilt_angle in tqdm(np.linspace(-0.10, 0, 3), desc=f'{xdat_type} {thickness_layer} tilt :'):
             for direction in ['x', 'y']:
                 for n, atoms in enumerate(selected_atoms):
                     atoms = copy.deepcopy(atoms)
@@ -75,7 +74,7 @@ for xdat_type in ['a', 'c', 'g']:
                     stem.repeat_cell((round(repeat_layer * cell[1,1] / cell[0,0]), repeat_layer, thickness_layer))
                     stem.rotate_atom(tilt_angle, direction)
                     measurement_np = main(stem)
-                    np.save(f'output/all/DP_{xdat_type}_{thickness_layer}_{round(tilt_angle, 4)}_{direction}_{n}_{polar}.npy', measurement_np)
+                    np.save(f'output/dps/DP_{xdat_type}_{thickness_layer}_{round(tilt_angle, 4)}_{direction}_{n}_{polar}.npy', measurement_np)
                     gc.collect()
 print('done')
 # %%

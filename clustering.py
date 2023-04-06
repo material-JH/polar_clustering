@@ -28,7 +28,7 @@ simulations = {}
 #%%
 
 for k, v in simulations_sep.items():
-    simulations[k] = v
+    simulations[k] = v[::2]
 
 for k, v in simulations.items():
     tmp = crop(v, 50, [0, 0])
@@ -53,7 +53,7 @@ simulations_rnd = simulations_tot[np.random.choice(len(simulations_tot), size=75
 plot_vertical(simulations_rnd.reshape(len(simulations_rnd) // 5, 5, 50, 50))
 
 #%%
-n_neighbors = 10
+n_neighbors = 15
 n_components = 2
 min_dist = 0.3
 n_clusters = 8
