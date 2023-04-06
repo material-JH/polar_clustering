@@ -30,7 +30,7 @@ def plot_vertical(data):
     fig, axs = plt.subplots(nrows=shape[0], ncols=shape[1], figsize=(8, 12))
     for i in range(shape[0]):
         for j in range(shape[1]):
-            axs[i, j].imshow(data[j, i])
+            axs[i, j].imshow(data[i, j])
             axs[i, j].axis('off')
     plt.show()
 

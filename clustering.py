@@ -2,31 +2,23 @@
 import random
 import numpy as np
 import matplotlib.pyplot as plt
-import matplotlib
 from scipy.spatial.distance import pdist, squareform
 from skimage.transform import resize
 from sklearn.cluster import DBSCAN
 from main import *
 import cv2
-# matplotlib.use('QtAgg')
 #%%
 data_post_011_norm = np.load('output/set2_SRO_011.npy')
 data_post_011_norm = np.concatenate([data_post_011_norm, np.load('output/set4_Ru_011.npy')], axis=0)
 
-def plot_vertical(data):
-    fig, axs = plt.subplots(nrows=8, ncols=5, figsize=(8, 12))
-    for i in range(0, 40, 5):
-        for j in range(5):
-            axs[i // 5, j].imshow(data[2, i, j])
-            axs[i // 5, j].axis('off')
-    plt.show()
-    
-plot_vertical(data_post_011_norm)
+#%%
+plot_vertical(data_post_011_norm[5])
 #%%
 eps = 0.2
+import pickle
 
-# sep = {'dn':0, 'up':1}
-sep = {'0.05': 0, '-0.025': 1, '0.0': 2, '0.025': 3, '-0.05': 4}
+with open('output/sep_011_5.pkl', 'rb') as f:
+    sep = pickle.load(f)
 
 simulations_sep = np.load('output/disk_011_5.npz')
 concatenated_array = np.concatenate(list(simulations_sep.values()), axis=0)
@@ -36,7 +28,7 @@ simulations = {}
 #%%
 
 for k, v in simulations_sep.items():
-    simulations[k] = select_data(v, eps=eps, min_samples=5)
+    simulations[k] = v
 
 for k, v in simulations.items():
     tmp = crop(v, 50, [0, 0])
@@ -49,15 +41,21 @@ for k, v in simulations.items():
 
 
 #%%
-n =15
+n = 7
 for k, v in simulations.items():
-    simulations[k] = fn_on_resized(v, cv2.GaussianBlur, (n, n), 0)
+    # simulations[k] = fn_on_resized(v, cv2.GaussianBlur, (n, n), 0)
     simulations[k] = normalize_Data(simulations[k])
 
+simulations_tot = np.concatenate(list(simulations.values()), axis=0)
 #%%
-n_neighbors = 30
+
+simulations_rnd = simulations_tot[np.random.choice(len(simulations_tot), size=75)]
+plot_vertical(simulations_rnd.reshape(len(simulations_rnd) // 5, 5, 50, 50))
+
+#%%
+n_neighbors = 10
 n_components = 2
-min_dist = 0.1
+min_dist = 0.3
 n_clusters = 8
 gamma = 0.3
 # embedding, labels = get_emb_lbl_real(data_post_002)
@@ -65,7 +63,7 @@ xyz = reduce((lambda x, y: x * y), data_post_011_norm.shape[:3])
 new = data_post_011_norm.reshape(xyz , -1)
 for k, v in simulations.items():
     new = np.concatenate([new, v.reshape(len(v), -1)], axis=0)
-new = new ** 3
+# new = new ** 2
 # embedding, labels = get_emb_lbl(simulations.reshape(len(simulations), -1), n_neighbors=15, min_dist=0.1 * 5,)
 # embedding, labels = get_emb_lbl(data_post_011_norm.reshape(xyz , -1), n_neighbors=15, min_dist=0.1, n_components=3)
 embedding = get_emb(new, n_neighbors=n_neighbors, min_dist=min_dist, n_components=n_components)
@@ -74,8 +72,6 @@ labels = get_lbl(embedding, n_clusters=n_clusters, gamma=gamma)
 emb_exp = embedding[:xyz]
 emb_sim = {}
 
-sep = {'dn':0, 'up':1}
-sep = {'0.05': 0, '-0.025': 1, '0.0': 2, '0.025': 3, '-0.05': 4}
 for k, v in simulations.items():
     emb_sim[k] = embedding[xyz + len(v) * sep[k]: xyz + len(v) * (sep[k] + 1)]
 
@@ -84,13 +80,13 @@ ax1, ax2 = 0, 1
 plt.scatter(embedding[:xyz // 2, ax1], embedding[:xyz // 2, ax2], label='SRO')
 plt.scatter(embedding[xyz // 2:xyz, ax1], embedding[xyz // 2:xyz, ax2], label='Ru')
 for k, v in emb_sim.items():
-    plt.scatter(v[:, ax1], v[:, ax2], label=f'sim_{k}', alpha=0.9)
+    plt.scatter(v[:, ax1], v[:, ax2], label=f'sim_{k}', alpha=0.1, c='red')
 plt.legend()
 #%%
 test=np.zeros(xyz)
 for n in range(-len(simulations), 0):
     distances = np.linalg.norm(embedding[:xyz] - embedding[n], axis=1)
-    if np.min(distances) > 0.05:
+    if np.min(distances) > 11:
         continue
     nearest_neighbor_index = np.argmin(distances)
     fig, ax = plt.subplots(1, 2, figsize=(3,2))
@@ -98,7 +94,7 @@ for n in range(-len(simulations), 0):
     fig.suptitle('exp vs sim')
     ax[0].imshow(data_post_011_norm.reshape(xyz , 50, 50)[nearest_neighbor_index])
     ax[0].axis('off')
-    ax[1].imshow(simulations[n])
+    ax[1].imshow(simulations_tot[n])
     ax[1].axis('off')
     plt.show()
     test[nearest_neighbor_index] = 1
@@ -120,14 +116,16 @@ plt.legend()
 plt.show()
 #%%
 # get nearest neighbor from simulation
-wlabel = 7
+
+simulations_tot = np.concatenate(list(simulations.values()), axis=0)
+wlabel = 0
 rnd_num = np.random.choice(np.where(labels[:xyz] == wlabel)[0])
 nearest_neighbor_index = np.argmin(np.linalg.norm(embedding[xyz:] - embedding[rnd_num], axis=1))
 fig, ax = plt.subplots(1, 2, figsize=(3,2))
 ax[0].imshow(data_post_011_norm.reshape(xyz , 50, 50)[rnd_num])
 ax[0].title.set_text('real')
 ax[0].axis('off')
-ax[1].imshow(simulations[nearest_neighbor_index])
+ax[1].imshow(simulations_tot[nearest_neighbor_index])
 ax[1].title.set_text('simulation')
 ax[1].axis('off')
 plt.show()
@@ -145,16 +143,6 @@ for m in range(2):
     cbar1.ax.yaxis.set_major_locator(MaxNLocator(integer=True))
     plt.show()
 
-#%%
-ind_closed = []
-for emb in embedding[:xyz]:
-    distances = np.linalg.norm(embedding[xyz:] - emb, axis=1)
-    if np.min(distances) > 0.2:
-        ind_closed.extend(np.where(distances == np.min(distances))[0])
-
-ind_closed = np.unique(ind_closed)
-simulations = simulations[ind_closed]
-print(ind_closed)
 #%%
 
 is_closed = []

@@ -7,13 +7,13 @@ import matplotlib.pyplot as plt
 from skimage.transform import resize
 
 #%%
-
+from tqdm import tqdm
 arr = []
 fnames = []
 n = 0
 
 circle = get_circle_conv(45)
-for file in os.listdir('output'):
+for file in tqdm(os.listdir('output')):
     # if file.__contains__('DP_dn') or file.__contains__('DP_up'):
     if file.__contains__('DP_a') or file.__contains__('DP_c') or file.__contains__('DP_g'):
         arr.append(np.load(f'output/{file}'))
@@ -66,70 +66,11 @@ for i in sep.keys():
 
 # %%
 np.savez('output/disk_011_5.npz', **disk)
+
+import pickle
+
+with open('output/sep_011_5.pkl', 'wb') as f:
+    pickle.dump(sep, f)
 print('saved')
 
 #%%
-for i in random.sample(range(len(disk_up)), 5):
-    plt.imshow(disk_up[i])
-    plt.show()
-#%%
-
-import tkinter
-
-from matplotlib.backends.backend_tkagg import (
-    FigureCanvasTkAgg, NavigationToolbar2Tk)
-# Implement the default Matplotlib key bindings.
-from matplotlib.backend_bases import key_press_handler
-from matplotlib.figure import Figure
-
-import numpy as np
-import cv2
-
-root = tkinter.Tk()
-root.wm_title("Embedding in Tk")
-
-fig, ax = plt.subplots(1, 1, figsize=(3, 3), dpi=100)
-t = np.arange(0, 3, .01)
-
-ax.imshow(arr[0])
-
-canvas = FigureCanvasTkAgg(fig, master=root)  # A tk.DrawingArea.
-canvas.draw()
-
-# pack_toolbar=False will make it easier to use a layout manager later on.
-toolbar = NavigationToolbar2Tk(canvas, root, pack_toolbar=False)
-toolbar.update()
-
-canvas.mpl_connect(
-    "key_press_event", lambda event: print(f"you pressed {event.key}"))
-canvas.mpl_connect("key_press_event", key_press_handler)
-
-button_quit = tkinter.Button(master=root, text="Quit", command=root.destroy)
-
-def update_frequency(new_val):
-    new_val = int(new_val)
-    ax.clear()
-    # ax.imshow(imutils.rotate(data[0, 20, 0], int(new_val), com[200]))
-    # ax.imshow(imutils.rotate(data.sum(axis=2)[2, new_val], int(82), com[200]))
-    ax.imshow(cv2.GaussianBlur(arr[new_val], (5, 5), 0), vmax=np.max(arr[new_val])/8, vmin=0)
-    ax.axis('off')
-    # required to update canvas and attached toolbar!
-    canvas.draw()
-
-slider_update = tkinter.Scale(root, from_=0, to=len(arr), orient=tkinter.HORIZONTAL,
-                              command=update_frequency, label="Frequency [Hz]")
-
-# Packing order is important. Widgets are processed sequentially and if there
-# is no space left, because the window is too small, they are not displayed.
-# The canvas is rather flexible in its size, so we pack it last which makes
-# sure the UI controls are displayed as long as possible.
-button_quit.pack(side=tkinter.BOTTOM)
-slider_update.pack(side=tkinter.BOTTOM, fill=tkinter.BOTH)
-toolbar.pack(side=tkinter.BOTTOM, fill=tkinter.X)
-canvas.get_tk_widget().pack(side=tkinter.TOP, fill=tkinter.BOTH, expand=True)
- 
-tkinter.mainloop()
-# %%
-plt.imshow(arr[220])
-# %%
-
