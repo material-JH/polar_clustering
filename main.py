@@ -44,7 +44,7 @@ def get_center(arr, conv):
     result = sig.convolve2d(arr, conv, mode='same')
     # Find the maximum position
     max_pos = np.unravel_index(np.argmax(result.get()), result.shape)
-    return (max_pos[0], max_pos[1])
+    return list(map(int, (max_pos[1], max_pos[0])))
 
 
 def normalize_Data(data):

@@ -1,21 +1,24 @@
+#%%
 import numpy as np
 import matplotlib.pyplot as plt
-import matplotlib
-from scipy.spatial.distance import pdist, squareform
-from skimage.transform import resize
 from main import *
 import cv2
 
 data = load_data(r"/mnt/c/Users/em3-user/Documents/set2_SRO")
 #%%
 circle = get_circle_conv(40)
-com = fn_on_resized(data, get_center, circle)
-com = np.reshape(com, (-1, *com.shape[-1:]))
-com = [list(map(int, c[::-1])) for c in com]
+
+tmp = np.reshape(data, (-1, *data.shape[-2:]))
+com = []
+for i in tmp:
+    com.append(get_center(i, circle))
     
 #%%
 data_post = fn_on_resized(data, rotate_by_cen, 81, com, list=True)
-data_post = crop_from_center(data_post, 250, com)
+data_post = crop_from_center(data_post, 250, com, list=True)
+
+#%%
+plt.imshow(data_post[0,10,0])
 
 #%%
 disk_pos_002 = [7, 100]
