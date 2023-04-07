@@ -13,10 +13,10 @@ fnames = []
 n = 0
 
 circle = get_circle_conv(45)
-for file in tqdm(os.listdir('output')):
+for file in tqdm(os.listdir('output/dps')):
     # if file.__contains__('DP_dn') or file.__contains__('DP_up'):
     if file.__contains__('DP_a') or file.__contains__('DP_c') or file.__contains__('DP_g'):
-        arr.append(np.load(f'output/{file}'))
+        arr.append(np.load(f'output/dps/{file}'))
         fnames.append(file)
         n += 1
 for n in range(len(arr)):
@@ -81,3 +81,11 @@ with open('output/sep_011_5.pkl', 'wb') as f:
 print('saved')
 
 #%%
+
+disk_all = np.load('output/disk_011_5.npz')
+disk = []
+for k, v in disk_all.items():
+    disk.extend(v)
+disk = np.array(disk)
+plot_tk(disk)
+# %%
