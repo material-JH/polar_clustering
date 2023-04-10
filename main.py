@@ -4,16 +4,17 @@ import hyperspy.api as hs
 import os
 import numpy as np
 import matplotlib.pyplot as plt
-from cuml.manifold import UMAP as cuUMAP
-from cuml.cluster import KMeans as cuKMeans
-from cuml.cluster import DBSCAN as cuDBSCAN
 from sklearn.cluster import SpectralClustering
 from functools import reduce
 
 try:
+    from cuml.manifold import UMAP
+    from cuml.cluster import DBSCAN 
     import cupyx.scipy.signal as sig
     import cupy as cp
 except:
+    from sklearn.manifold import UMAP
+    from sklearn.cluster import DBSCAN
     import scipy.signal as sig
 
 def get_circle_conv(size):
@@ -107,7 +108,7 @@ def fn_on_resized(data, fn, *args, **kwargs):
     return output
 
 def get_emb(data,n_components=2, n_neighbors=15, min_dist=0.1):
-    reducer = cuUMAP(n_components= n_components,
+    reducer = UMAP(n_components= n_components,
                         n_neighbors = n_neighbors,
                         min_dist = min_dist, init='random')
 
@@ -120,7 +121,7 @@ def get_lbl(emb, n_clusters=2, gamma=0.5):
     return labels
 
 def select_data(data, eps=0.2, min_samples=1):
-    dbscan = cuDBSCAN(eps=eps, min_samples=min_samples)
+    dbscan = DBSCAN(eps=eps, min_samples=min_samples)
     emb = get_emb(data.reshape((len(data), -1)))
     fit = dbscan.fit_predict(emb)
     selected_data = []
