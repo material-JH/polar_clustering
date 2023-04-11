@@ -12,10 +12,13 @@ try:
     from cuml.cluster import DBSCAN 
     import cupyx.scipy.signal as sig
     import cupy as cp
+    print('gpu enabled')
 except:
     from sklearn.manifold import UMAP
     from sklearn.cluster import DBSCAN
     import scipy.signal as sig
+    print('gpu disabled')
+
 
 def get_circle_conv(size):
     center = (size // 2, size // 2)  # Center point of the circle
@@ -56,10 +59,10 @@ def _normalize_Data(data):
     return (data - np.mean(data)) / np.std(data)
 
 
-def load_data(path):
+def load_data(path, contained='dm'):
     data = []
     for i in os.listdir(path):
-        if i.__contains__('dm'):
+        if i.__contains__(contained):
             data.append(hs.load(os.path.join(path, i)).data)
     data = np.stack(data, axis=0)
     data = data.swapaxes(1, 3).swapaxes(2, 4)

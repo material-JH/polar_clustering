@@ -29,7 +29,7 @@ def main(stem: Stem):
     stem.set_probe(gaussian_spread=10, defocus=100)
     stem.set_scan((2, 2))
     measurement = stem.scan(batch_size=32)
-    measurement = measurement.astype(np.float32)
+    measurement.array = measurement.array.astype(np.float32)
     new_size = min(int(N * measurement.calibrations[2].sampling / measurement.calibrations[3].sampling),
                     int(N * measurement.calibrations[3].sampling / measurement.calibrations[2].sampling))
     test = squaring(measurement, [1,1], new_size, N)
@@ -66,17 +66,20 @@ stem = Stem('gpu')
 
 
 for xdat_type in ['a', 'c', 'g']:
-    atoms_list = read(f'xdat/XDATCAR_{xdat_type}', index='::2')
-    selected_atoms = select_atom(atoms_list)
-    for thickness_layer in range(78, 83, 2):
-        for repeat_layer in range(16, 21, 2):
-            for tilt_angle in tqdm(np.linspace(-0.10, 0, 3), desc=f'{xdat_type} {thickness_layer} tilt :'):
+    # atoms_list = read(f'xdat/XDATCAR_{xdat_type}', index='::50')
+    selected_atoms = read(f'xdat/XDATCAR_{xdat_type}', index=':')
+    # selected_atoms = select_atom(atoms_list)
+    for thickness_layer in range(80, 83, 5):
+    # for thickness_layer in range(78, 83, 2):
+        for repeat_layer in range(16, 21, 4):
+            for tilt_angle in tqdm(np.linspace(-0.10, 0, 2), desc=f'{xdat_type} {thickness_layer} {repeat_layer} tilt :'):
                 for direction in ['x', 'y']:
                     for n, atoms in enumerate(selected_atoms):
+                        if n  % 50 != 0:
+                            continue
                         atoms = copy.deepcopy(atoms)
                         atoms.cell = np.diag(np.diag(atoms.cell))
                         stem.set_atom(atoms)
-                        stem.rotate_atom(90, 'x')
                         polar = round(get_polar(atoms))
                         cell = stem.atoms.cell
 
@@ -93,7 +96,7 @@ print('done')
 # %%
 import glob
 import os
-for f in glob.glob('output/*'):
+for f in glob.glob('output/dps/*'):
     if f.__contains__('DP_g') or f.__contains__('DP_a_') or f.__contains__('DP_c_'):
         os.remove(f)
 # %%

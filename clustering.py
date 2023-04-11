@@ -6,10 +6,10 @@ from main import *
 import cv2
 #%%
 data_post_011_norm = np.load('output/set2_SRO_011.npy')
-data_post_011_norm = np.concatenate([data_post_011_norm, np.load('output/set4_Ru_011.npy')], axis=0)
+# data_post_011_norm = np.concatenate([data_post_011_norm, np.load('output/set4_Ru_011.npy')], axis=0)
 
 #%%
-plot_vertical(data_post_011_norm[5])
+plot_vertical(data_post_011_norm[2, ::4, ::2])
 #%%
 eps = 0.2
 import pickle
@@ -20,30 +20,35 @@ with open('output/sep_011_5.pkl', 'rb') as f:
 simulations_sep = np.load('output/disk_011_5.npz')
 concatenated_array = np.concatenate(list(simulations_sep.values()), axis=0)
 
-simulations = {}
 
 #%%
+simulations = {}
 
 for k, v in simulations_sep.items():
-    simulations[k] = v[::2]
+    # simulations[k] = v
+    simulations[k] = v[np.random.choice(len(v), size=100)]
+    # simulations[k] = fn_on_resized(v[np.random.choice(len(v), size=100)], imutils.resize, 54, 54)
+    # simulations[k] = fn_on_resized(v, imutils.resize, 60, 60)
 
 for k, v in simulations.items():
-    tmp = crop(v[::50], 50, [0, 0])
-    for i in range(0, 7, 3):
-        for j in range(0, 7, 3):
-            if i == 0 and j == 0:
+    tmp = crop(v, 50, [2, 2])
+    for i in range(2, 5, 2):
+        for j in range(2, 5, 2):
+            if i == 2 and j == 2:
                 continue
             tmp = np.concatenate([tmp, crop(v, 50, [i, j])], axis=0)
     simulations[k] = tmp
 
 
 #%%
-n = 11
+n = 5
 for k, v in simulations.items():
-    # simulations[k] = fn_on_resized(v, cv2.GaussianBlur, (n, n), 0)
+    simulations[k] = fn_on_resized(v, cv2.GaussianBlur, (n, n), 0)
     simulations[k] = normalize_Data(simulations[k])
 
 simulations_tot = np.concatenate(list(simulations.values()), axis=0)
+
+# plot_tk(simulations_tot)
 #%%
 
 simulations_rnd = simulations_tot[np.random.choice(len(simulations_tot), size=75)]
@@ -52,13 +57,13 @@ plot_vertical(simulations_rnd.reshape(len(simulations_rnd) // 5, 5, 50, 50))
 #%%
 n_neighbors = 15
 n_components = 2
-min_dist = 0.5
+min_dist = 0.1
 n_clusters = 8
 gamma = 0.3
 # embedding, labels = get_emb_lbl_real(data_post_002)
 xyz = reduce((lambda x, y: x * y), data_post_011_norm.shape[:3])
 new = data_post_011_norm.reshape(xyz , -1)
-new = new.astype(np.float16)
+new = new.astype(np.float32)
 for k, v in simulations.items():
     new = np.concatenate([new, v.reshape(len(v), -1)], axis=0)
 # new = new ** 2
@@ -84,15 +89,39 @@ ax1, ax2 = 0, 1
 plt.scatter(embedding[:xyz // 2, ax1], embedding[:xyz // 2, ax2], label='SRO')
 plt.scatter(embedding[xyz // 2:xyz, ax1], embedding[xyz // 2:xyz, ax2], label='Ru')
 for k, v in emb_sim.items():
-    plt.scatter(v[:, ax1], v[:, ax2], label=f'sim_{k}', alpha=0.01, c='red')
+    plt.scatter(v[:, ax1], v[:, ax2], label=f'sim_{k}', alpha=0.3, c='red')
 plt.legend()
 #%%
+
+is_closed = []
+for emb in embedding[:xyz]:
+    distances = np.linalg.norm(embedding[xyz:] - emb, axis=1)
+    if np.min(distances) > 0.2:
+        is_closed.append(0)
+    else:
+        is_closed.append(1)
+
+is_closed = np.array(is_closed)
+
+for m in range(2):
+    fig, axs = plt.subplots(nrows=1, ncols=5, figsize=(8, 4))
+    for n, img in enumerate(is_closed.reshape(data_post_011_norm.shape[:3])[range(m * 5, m * 5 + 5)]):
+        im = axs[n].imshow(img)
+        axs[n].axis('off')
+    plt.show()
+
+#%%
+exp1 = False
 test=np.zeros(xyz)
 for n in range(-len(simulations_tot), 0):
-    distances = np.linalg.norm(embedding[:xyz] - embedding[n], axis=1)
+    if exp1:
+        distances = np.linalg.norm(embedding[:xyz // 2] - embedding[n], axis=1)
+        nearest_neighbor_index = np.argmin(distances)
+    else:
+        distances = np.linalg.norm(embedding[xyz // 2:xyz] - embedding[n], axis=1)
+        nearest_neighbor_index = np.argmin(distances) + xyz // 2
     if np.min(distances) > 0.1:
         continue
-    nearest_neighbor_index = np.argmin(distances)
     fig, ax = plt.subplots(1, 2, figsize=(3,2))
     # fig.suptitle(f'{n} {nearest_neighbor_index}')
     fig.suptitle('exp vs sim')
@@ -157,23 +186,6 @@ for m in range(2):
     plt.show()
 
 #%%
-
-is_closed = []
-for emb in embedding[:xyz]:
-    distances = np.linalg.norm(embedding[xyz:] - emb, axis=1)
-    if np.min(distances) > 0.2:
-        is_closed.append(0)
-    else:
-        is_closed.append(1)
-
-is_closed = np.array(is_closed)
-
-for m in range(2):
-    fig, axs = plt.subplots(nrows=1, ncols=5, figsize=(8, 4))
-    for n, img in enumerate(is_closed.reshape(data_post_011_norm.shape[:3])[range(m * 5, m * 5 + 5)]):
-        im = axs[n].imshow(img)
-        axs[n].axis('off')
-    plt.show()
 
 #%%
 

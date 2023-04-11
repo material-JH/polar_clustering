@@ -45,17 +45,13 @@ for i in sep.keys():
     disk[i] = []
     
 for i in range(4):
-    arr = arr[::-1,:]
+    arr = arr[:,::-1,:]
     if i % 2 == 0:
-        arr = arr[:, ::-1]
-    if i // 2 == 0:
-        start_pos_011[1] = 159
-    else:
-        start_pos_011[1] = 156
+        arr = arr[:,:, ::-1]
     # for n in range(1):
     for n in range(len(arr)):
-        dn = np.sum(crop(arr[n], rad, start_pos_002))
-        up = np.sum(crop(arr[n], rad, start_pos_m002))
+        # dn = np.sum(crop(arr[n], rad, start_pos_002))
+        # up = np.sum(crop(arr[n], rad, start_pos_m002))
         
         img = crop(arr[n], rad, start_pos_011)
         name = fnames[n]
@@ -88,4 +84,10 @@ for k, v in disk_all.items():
     disk.extend(v)
 disk = np.array(disk)
 plot_tk(disk)
+# %%
+arr = fn_on_resized(arr, normalize_Data)
+
+#%%
+arr[arr > 2] = 2
+plot_tk(arr)
 # %%

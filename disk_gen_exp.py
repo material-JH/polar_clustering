@@ -4,7 +4,7 @@ import matplotlib.pyplot as plt
 from main import *
 import cv2
 
-data = load_data(r"/mnt/c/Users/em3-user/Documents/set2_SRO")
+data = load_data(r"/home/jinho93/project/BST/data/set4_Ru", contained='0.dm')
 #%%
 circle = get_circle_conv(40)
 
@@ -14,8 +14,9 @@ for i in tmp:
     com.append(get_center(i, circle))
     
 #%%
-data_post = fn_on_resized(data, rotate_by_cen, 81, com, list=True)
+data_post = fn_on_resized(data, rotate_by_cen, 82, com, list=True)
 data_post = crop_from_center(data_post, 250, com, list=True)
+data_post = normalize_Data(data_post)
 
 #%%
 plt.imshow(data_post[0,10,0])
@@ -66,3 +67,9 @@ for n, c in enumerate(com):
         com[n] = [27, 27]
 
 data_post_002_norm = crop_from_center(data_post_002_norm, new_size, com)
+#%%
+
+# apply high limit to 1
+data_post[data_post > 2.] = 2.
+plot_tk(data_post.reshape(-1, data_post.shape[-2], data_post.shape[-1]))
+# %%
