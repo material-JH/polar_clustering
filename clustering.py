@@ -18,7 +18,6 @@ with open('output/sep_002.pkl', 'rb') as f:
 
 simulations_sep = np.load('output/disk_002.npz')
 
-simulations = {}
 
 for k, v in simulations_sep.items():
     simulations[k] = v
@@ -34,14 +33,16 @@ for k, v in simulations.items():
 
 n = 11
 for k, v in simulations.items():
-    # simulations[k] = fn_on_resized(v, cv2.GaussianBlur, (n, n), 0)
+    simulations[k] = fn_on_resized(v, cv2.GaussianBlur, (n, n), 0)
     simulations[k] = normalize_Data(simulations[k])
 
 simulations_tot = np.concatenate(list(simulations.values()), axis=0)
+
+# plot_tk(simulations_tot)
 #%%
 n_neighbors = 15
 n_components = 2
-min_dist = 0.5
+min_dist = 0.1
 n_clusters = 8
 gamma = 0.3
 # embedding, labels = get_emb_lbl_real(data_post_002)
@@ -121,7 +122,6 @@ for n in range(xyz):
     distances = np.linalg.norm(embedding[xyz:] - embedding[n], axis=1)
     if np.min(distances) > 0.1:
         continue
-    nearest_neighbor_index = np.argmin(distances)
     fig, ax = plt.subplots(1, 2, figsize=(3,2))
     # fig.suptitle(f'{n} {nearest_neighbor_index}')
     fig.suptitle('exp vs sim')

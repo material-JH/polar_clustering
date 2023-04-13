@@ -20,6 +20,7 @@ for i in tmp:
 #%%
 data_post = fn_on_resized(data, rotate_by_cen, 82, com, list=True)
 data_post = crop_from_center(data_post, 250, com, list=True)
+data_post = normalize_Data(data_post)
 
 #%%
 plt.imshow(data_post[0,15,0])
