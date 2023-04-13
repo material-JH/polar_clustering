@@ -13,79 +13,56 @@ fnames = []
 n = 0
 
 circle = get_circle_conv(45)
-for file in tqdm(os.listdir('output/dps')):
-    # if file.__contains__('DP_dn') or file.__contains__('DP_up'):
-    if file.__contains__('DP_a') or file.__contains__('DP_c') or file.__contains__('DP_g'):
-        arr.append(np.load(f'output/dps/{file}').astype(np.float32))
-        fnames.append(file)
-        n += 1
+for file in tqdm(os.listdir('output/0k')):
+    arr.append(np.load(f'output/0k/{file}').astype(np.float16))
+    fnames.append(file[:-4])
+    n += 1
 for n in range(len(arr)):
     # arr[n] = resize(arr[n][0,0],  [r + 150 for r in arr[n][0,0].shape])
     arr[n] = resize(arr[n][0,0],  [r + 50 for r in arr[n][0,0].shape])
     # arr[n] = arr[n]np.roll(arr[n], get_center(), axis=0)
-start_pos_011 = [58, 158]
-start_pos_002 = [12, 113]
+start_pos_011 = [62, 159]
+start_pos_002 = [14, 111]
 start_pos_m002 = [212, 113]
 arr = np.array(arr)
-rad = 56
+rad = 50
 
 #%%
-start_pos_001 = [60, 110]
-plt.imshow(arr[1111], vmax=1e-4)
-# plt.imshow(crop(arr[3], rad, start_pos_001))
-
-
-#%%
+num_sep = 2
 sep = {}
-for n, i in enumerate(set([i.split('_')[3] for i in fnames])):
+for n, i in enumerate(set([i.split('_')[num_sep] for i in fnames])):
     sep[i] = n
 
 disk = {}
 for i in sep.keys():
     disk[i] = []
     
-for i in range(4):
-    arr = arr[::-1,:]
-    if i % 2 == 0:
-        arr = arr[:, ::-1]
-    if i // 2 == 0:
-        start_pos_011[1] = 159
-    else:
-        start_pos_011[1] = 156
-    # for n in range(1):
-    for n in range(len(arr)):
-        dn = np.sum(crop(arr[n], rad, start_pos_002))
-        up = np.sum(crop(arr[n], rad, start_pos_m002))
-        
-        img = crop(arr[n], rad, start_pos_011)
-        name = fnames[n]
-        disk[name.split('_')[3]].append(img)
-    # prime = get_center(disk[0], circle)
-    # for i in range(len(disk)):
-    #     disk[i] = np.roll(disk[i], prime[0] - get_center(disk[i], circle)[0], axis=0)
-    #     disk[i] = np.roll(disk[i], prime[1] - get_center(disk[i], circle)[1], axis=1)
-    #     print(get_center(disk[i], circle))
-    # print(prime)
+for n in range(len(arr)):
+    img = crop(arr[n], rad, start_pos_002)
+    name = fnames[n]
+    disk[name.split('_')[num_sep]].append(img)
 
 for i in sep.keys():
     disk[i] = np.array(disk[i])
     print(len(disk[i]))
 
 # %%
-np.savez('output/disk_011_5.npz', **disk)
+np.savez('output/disk_002.npz', **disk)
 
 import pickle
 
-with open('output/sep_011_5.pkl', 'wb') as f:
+with open('output/sep_002.pkl', 'wb') as f:
     pickle.dump(sep, f)
 print('saved')
 
 #%%
 
-disk_all = np.load('output/disk_011_5.npz')
+disk_all = np.load('output/disk_002.npz')
 disk = []
 for k, v in disk_all.items():
     disk.extend(v)
 disk = np.array(disk)
 plot_tk(disk)
+# %%
+plot_tk(arr)
 # %%
