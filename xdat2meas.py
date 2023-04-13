@@ -29,7 +29,7 @@ def main(stem: Stem):
     stem.set_probe(gaussian_spread=10, defocus=100)
     stem.set_scan((2, 2))
     measurement = stem.scan(batch_size=32)
-    measurement = measurement.astype(np.float32)
+    measurement.array = measurement.array.astype(np.float32)
     new_size = min(int(N * measurement.calibrations[2].sampling / measurement.calibrations[3].sampling),
                     int(N * measurement.calibrations[3].sampling / measurement.calibrations[2].sampling))
     test = squaring(measurement, [1,1], new_size, N)

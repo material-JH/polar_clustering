@@ -49,8 +49,10 @@ def get_center(arr, conv):
 
 
 def normalize_Data(data):
-    return fn_on_resized(data, _normalize_Data)
-
+    if len(data.shape) == 2:
+        return _normalize_Data(data)
+    else:
+        return fn_on_resized(data, _normalize_Data)
 
 def _normalize_Data(data):
     return (data - np.mean(data)) / np.std(data)

@@ -25,12 +25,12 @@ simulations = {}
 #%%
 
 for k, v in simulations_sep.items():
-    simulations[k] = v[::2]
+    simulations[k] = v[::5]
 
 for k, v in simulations.items():
-    tmp = crop(v[::50], 50, [0, 0])
-    for i in range(0, 7, 3):
-        for j in range(0, 7, 3):
+    tmp = crop(v, 50, [0, 0])
+    for i in range(0, 4, 3):
+        for j in range(0, 4, 3):
             if i == 0 and j == 0:
                 continue
             tmp = np.concatenate([tmp, crop(v, 50, [i, j])], axis=0)
@@ -40,7 +40,7 @@ for k, v in simulations.items():
 #%%
 n = 11
 for k, v in simulations.items():
-    # simulations[k] = fn_on_resized(v, cv2.GaussianBlur, (n, n), 0)
+    simulations[k] = fn_on_resized(v, cv2.GaussianBlur, (n, n), 0)
     simulations[k] = normalize_Data(simulations[k])
 
 simulations_tot = np.concatenate(list(simulations.values()), axis=0)
@@ -52,20 +52,33 @@ plot_vertical(simulations_rnd.reshape(len(simulations_rnd) // 5, 5, 50, 50))
 #%%
 n_neighbors = 15
 n_components = 2
-min_dist = 0.5
-n_clusters = 8
-gamma = 0.3
+min_dist = 0.3
+n_clusters = 6
+gamma = 0.1
 # embedding, labels = get_emb_lbl_real(data_post_002)
 xyz = reduce((lambda x, y: x * y), data_post_011_norm.shape[:3])
 new = data_post_011_norm.reshape(xyz , -1)
 new = new.astype(np.float16)
+
+
 for k, v in simulations.items():
     new = np.concatenate([new, v.reshape(len(v), -1)], axis=0)
+
+del data_post_011_norm, simulations_sep, concatenated_array, simulations_tot, simulations
+
+
+def fft2d(data):
+    return np.fft.fftshift(np.fft.fft2(data))
+
+# new = fn_on_resized(new, fft2d)
 # new = new ** 2
 # embedding, labels = get_emb_lbl(simulations.reshape(len(simulations), -1), n_neighbors=15, min_dist=0.1 * 5,)
 # embedding, labels = get_emb_lbl(data_post_011_norm.reshape(xyz , -1), n_neighbors=15, min_dist=0.1, n_components=3)
 embedding = get_emb(new, n_neighbors=n_neighbors, min_dist=min_dist, n_components=n_components)
 labels = get_lbl(embedding, n_clusters=n_clusters, gamma=gamma)
+#%%
+np.save('output/embedding_011_5.npy', embedding)
+np.save('output/labels_011_5.npy', labels)
 # from cuml.cluster import DBSCAN as cuDBSCAN
 # dbscan_float = cuDBSCAN(eps=1.0, min_samples=30)
 # dbscan_float.fit(embedding)
@@ -83,8 +96,11 @@ for k, v in simulations.items():
 ax1, ax2 = 0, 1
 plt.scatter(embedding[:xyz // 2, ax1], embedding[:xyz // 2, ax2], label='SRO')
 plt.scatter(embedding[xyz // 2:xyz, ax1], embedding[xyz // 2:xyz, ax2], label='Ru')
+tot = []
 for k, v in emb_sim.items():
-    plt.scatter(v[:, ax1], v[:, ax2], label=f'sim_{k}', alpha=0.01, c='red')
+    tot.extend(v)
+tot = np.array(tot)
+plt.scatter(tot[:, ax1], tot[:, ax2], label=f'simulation', alpha=1, color='red')
 plt.legend()
 #%%
 test=np.zeros(xyz)
@@ -157,14 +173,20 @@ for m in range(2):
     plt.show()
 
 #%%
-
+simulations_len = [len(v) for v in simulations.values()]
 is_closed = []
 for emb in embedding[:xyz]:
     distances = np.linalg.norm(embedding[xyz:] - emb, axis=1)
     if np.min(distances) > 0.2:
         is_closed.append(0)
     else:
-        is_closed.append(1)
+        min_d = np.argmin(distances)
+        for i, v in enumerate(simulations_len):
+            if min_d < v:
+                is_closed.append(i + 1)
+                break
+            else:
+                min_d -= v
 
 is_closed = np.array(is_closed)
 
