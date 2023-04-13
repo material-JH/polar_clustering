@@ -16,18 +16,18 @@ circle = get_circle_conv(45)
 for file in tqdm(os.listdir('output/dps')):
     # if file.__contains__('DP_dn') or file.__contains__('DP_up'):
     if file.__contains__('DP_a') or file.__contains__('DP_c') or file.__contains__('DP_g'):
-        arr.append(np.load(f'output/dps/{file}').astype(np.float32))
+        arr.append(np.load(f'output/dps/{file}'))
         fnames.append(file)
         n += 1
 for n in range(len(arr)):
     # arr[n] = resize(arr[n][0,0],  [r + 150 for r in arr[n][0,0].shape])
     arr[n] = resize(arr[n][0,0],  [r + 50 for r in arr[n][0,0].shape])
     # arr[n] = arr[n]np.roll(arr[n], get_center(), axis=0)
-start_pos_011 = [58, 158]
+start_pos_011 = [60, 158]
 start_pos_002 = [12, 113]
 start_pos_m002 = [212, 113]
 arr = np.array(arr)
-rad = 56
+rad = 54
 
 #%%
 start_pos_001 = [60, 110]

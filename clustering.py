@@ -2,6 +2,9 @@
 import random
 import numpy as np
 import matplotlib.pyplot as plt
+from scipy.spatial.distance import pdist, squareform
+from skimage.transform import resize
+from sklearn.cluster import DBSCAN
 from main import *
 import cv2
 #%%
@@ -29,8 +32,13 @@ for k, v in simulations_sep.items():
 
 for k, v in simulations.items():
     tmp = crop(v, 50, [0, 0])
+<<<<<<< HEAD
     for i in range(0, 4, 3):
         for j in range(0, 4, 3):
+=======
+    for i in range(0, 5, 2):
+        for j in range(0, 5, 2):
+>>>>>>> parent of d43dbac (w/o)
             if i == 0 and j == 0:
                 continue
             tmp = np.concatenate([tmp, crop(v, 50, [i, j])], axis=0)
@@ -38,7 +46,7 @@ for k, v in simulations.items():
 
 
 #%%
-n = 11
+n = 7
 for k, v in simulations.items():
     simulations[k] = fn_on_resized(v, cv2.GaussianBlur, (n, n), 0)
     simulations[k] = normalize_Data(simulations[k])
@@ -53,6 +61,7 @@ plot_vertical(simulations_rnd.reshape(len(simulations_rnd) // 5, 5, 50, 50))
 n_neighbors = 15
 n_components = 2
 min_dist = 0.3
+<<<<<<< HEAD
 n_clusters = 6
 gamma = 0.1
 # embedding, labels = get_emb_lbl_real(data_post_002)
@@ -61,6 +70,13 @@ new = data_post_011_norm.reshape(xyz , -1)
 new = new.astype(np.float16)
 
 
+=======
+n_clusters = 8
+gamma = 0.3
+# embedding, labels = get_emb_lbl_real(data_post_002)
+xyz = reduce((lambda x, y: x * y), data_post_011_norm.shape[:3])
+new = data_post_011_norm.reshape(xyz , -1)
+>>>>>>> parent of d43dbac (w/o)
 for k, v in simulations.items():
     new = np.concatenate([new, v.reshape(len(v), -1)], axis=0)
 
@@ -76,6 +92,7 @@ def fft2d(data):
 # embedding, labels = get_emb_lbl(data_post_011_norm.reshape(xyz , -1), n_neighbors=15, min_dist=0.1, n_components=3)
 embedding = get_emb(new, n_neighbors=n_neighbors, min_dist=min_dist, n_components=n_components)
 labels = get_lbl(embedding, n_clusters=n_clusters, gamma=gamma)
+<<<<<<< HEAD
 #%%
 np.save('output/embedding_011_5.npy', embedding)
 np.save('output/labels_011_5.npy', labels)
@@ -85,6 +102,8 @@ np.save('output/labels_011_5.npy', labels)
 # labels = dbscan_float.labels_
 
 print(len(set(labels)))
+=======
+>>>>>>> parent of d43dbac (w/o)
 #%%
 emb_exp = embedding[:xyz]
 emb_sim = {}
@@ -98,15 +117,19 @@ plt.scatter(embedding[:xyz // 2, ax1], embedding[:xyz // 2, ax2], label='SRO')
 plt.scatter(embedding[xyz // 2:xyz, ax1], embedding[xyz // 2:xyz, ax2], label='Ru')
 tot = []
 for k, v in emb_sim.items():
+<<<<<<< HEAD
     tot.extend(v)
 tot = np.array(tot)
 plt.scatter(tot[:, ax1], tot[:, ax2], label=f'simulation', alpha=1, color='red')
+=======
+    plt.scatter(v[:, ax1], v[:, ax2], label=f'sim_{k}', alpha=0.1, c='red')
+>>>>>>> parent of d43dbac (w/o)
 plt.legend()
 #%%
 test=np.zeros(xyz)
-for n in range(-len(simulations_tot), 0):
+for n in range(-len(simulations), 0):
     distances = np.linalg.norm(embedding[:xyz] - embedding[n], axis=1)
-    if np.min(distances) > 0.1:
+    if np.min(distances) > 11:
         continue
     nearest_neighbor_index = np.argmin(distances)
     fig, ax = plt.subplots(1, 2, figsize=(3,2))
@@ -139,17 +162,8 @@ plt.show()
 
 simulations_tot = np.concatenate(list(simulations.values()), axis=0)
 wlabel = 0
-# rnd_num = np.random.choice(np.where(labels[:xyz] == wlabel)[0])
-#%%
-rnd_num = np.random.choice(range(len(emb_exp)))
+rnd_num = np.random.choice(np.where(labels[:xyz] == wlabel)[0])
 nearest_neighbor_index = np.argmin(np.linalg.norm(embedding[xyz:] - embedding[rnd_num], axis=1))
-distances = np.linalg.norm(embedding[xyz:] - embedding[rnd_num], axis=1)
-while np.min(distances) > 0.2:
-    rnd_num = np.random.choice(range(len(emb_exp)))
-    nearest_neighbor_index = np.argmin(np.linalg.norm(embedding[xyz:] - embedding[rnd_num], axis=1))
-    distances = np.linalg.norm(embedding[xyz:] - embedding[rnd_num], axis=1)
-
-print(np.min(distances), rnd_num, nearest_neighbor_index)
 fig, ax = plt.subplots(1, 2, figsize=(3,2))
 ax[0].imshow(data_post_011_norm.reshape(xyz , 50, 50)[rnd_num])
 ax[0].title.set_text('real')
@@ -198,7 +212,6 @@ for m in range(2):
     plt.show()
 
 #%%
-
 alpha = 0.1
 alpha_sim = 0.5
 labels_exp = labels[:xyz]
