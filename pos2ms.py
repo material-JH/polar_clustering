@@ -1,10 +1,10 @@
 #%%
 from copy import deepcopy
+
+from gpaw import PW, FermiDirac
 from stem4D import *
 from glob import glob
 import numpy as np
-import imutils
-import cv2
 
 def get_polar(atom):
     anum = atom.get_atomic_numbers()
@@ -37,19 +37,20 @@ for f in sorted(glob('cif/*/CONTCAR')):
 
 refactor = repeat_layer / 20
 # %%
-test_set = False
+test_set = True
 for n, atoms in enumerate(atoms_list):
     if test_set:
-        if not n % 40 == 0:
+        if not n % 45 == 0:
             continue
-    for thickness_layer in range(78, 83, 4):
+    for thickness_layer in range(80, 83, 4):
         inatoms = deepcopy(atoms)
         stem.set_atom(inatoms)
         polar = round(get_polar(inatoms), 5)
         cell = stem.atoms.cell
-        stem.repeat_cell((round(repeat_layer * cell[1,1] / cell[0,0]), repeat_layer, thickness_layer))
+        # stem.repeat_cell((round(repeat_layer * cell[1,1] / cell[0,0]), repeat_layer, thickness_layer))
+        # stem.generate_pot(N, lattice_constant)
         stem.generate_pot(N, lattice_constant)
-        stem.set_probe(defocus=1e+1, gaussian_spread=1e-5, tilt=(0,0), focal_spread=100)
+        stem.set_probe(defocus=0, gaussian_spread=1e-5, tilt=(0,0), focal_spread=100)
         stem.set_scan((2, 2))
 
         measurement = stem.scan(batch_size=32)

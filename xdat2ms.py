@@ -22,14 +22,14 @@ def get_polar(atom:Atoms):
     
     return polar
     
-def main(stem: Stem):
+def main(stem: Stem, tilt):
     refactor = repeat_layer / 20
 
     stem.generate_pot(N, lattice_constant/2)
-    stem.set_probe(gaussian_spread=10, defocus=100)
+    stem.set_probe(gaussian_spread=10, defocus=100, tilt=tilt)
     stem.set_scan((2, 2))
     measurement = stem.scan(batch_size=32)
-    measurement = measurement.astype(np.float32)
+    measurement.array = measurement.array.astype(np.float32)
     new_size = min(int(N * measurement.calibrations[2].sampling / measurement.calibrations[3].sampling),
                     int(N * measurement.calibrations[3].sampling / measurement.calibrations[2].sampling))
     test = squaring(measurement, [1,1], new_size, N)
@@ -57,19 +57,18 @@ def select_atom(atoms_list):
         selected_atoms.append(atoms_list[random.choice(np.where(lbl == i)[0])])
     return selected_atoms
 
-N = 512
+N = 2 ** 10
 lattice_constant = 3.94513
 ######################
 
 
 stem = Stem('gpu')
-
+repeat_layer = 20
 
 for xdat_type in ['a', 'c', 'g']:
-    atoms_list = read(f'xdat/XDATCAR_{xdat_type}', index='::2')
+    atoms_list = read(f'xdat/XDATCAR_{xdat_type}', index=':')
     selected_atoms = select_atom(atoms_list)
     for thickness_layer in range(78, 83, 2):
-        for repeat_layer in range(16, 21, 2):
             for tilt_angle in tqdm(np.linspace(-0.10, 0, 3), desc=f'{xdat_type} {thickness_layer} tilt :'):
                 for direction in ['x', 'y']:
                     for n, atoms in enumerate(selected_atoms):
@@ -80,13 +79,17 @@ for xdat_type in ['a', 'c', 'g']:
                         polar = round(get_polar(atoms))
                         cell = stem.atoms.cell
 
-                        fname = f'output/dps/DP_{xdat_type}_{thickness_layer}_{repeat_layer}_{round(tilt_angle, 4)}_{direction}_{n}_{polar}.npy'
+                        fname = f'output/dps/DP_{xdat_type}_{thickness_layer}_{round(tilt_angle, 4)}_{direction}_{n}_{polar}.npy'
                         if os.path.exists(fname):
                             continue
 
                         stem.repeat_cell((round(repeat_layer * cell[1,1] / cell[0,0]), repeat_layer, thickness_layer))
                         stem.rotate_atom(tilt_angle, direction)
-                        measurement_np = main(stem)
+                        if direction == 'x':
+                            tilt = (tilt_angle, 0)
+                        else:
+                            tilt = (0, tilt_angle)
+                        measurement_np = main(stem, tilt)
                         np.save(fname, measurement_np)
                         gc.collect()
 print('done')

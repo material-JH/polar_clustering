@@ -7,17 +7,16 @@ from main import *
 import pickle
 import cv2
 #%%
-data_post_exp = np.load('output/set2_SRO_002.npy')
-data_post_exp = np.concatenate([data_post_exp, np.load('output/set3_Ru_002.npy')], axis=0)
+data_post_exp = np.load('output/set2_SRO_011.npy')
+# data_post_exp = np.concatenate([data_post_exp, np.load('output/set3_Ru_011.npy')], axis=0)
 
 #%%
 eps = 0.2
 
-with open('output/sep_002.pkl', 'rb') as f:
-    sep = pickle.load(f)
 
-simulations_sep = np.load('output/disk_002.npz')
+simulations_sep = np.load('output/disk_011.npz')
 
+simulations = {}
 
 for k, v in simulations_sep.items():
     simulations[k] = v
@@ -93,14 +92,10 @@ plt.scatter(embedding[xyz:, ax1], embedding[xyz:, ax2], label='simulation', c='r
 #plt.legend()
 #%%
 
-plot_tk(data_post_exp.reshape(xyz, 50, 50))
-
-#%%
-
 is_closed = []
 for emb in embedding[:xyz]:
     distances = np.linalg.norm(embedding[xyz:] - emb, axis=1)
-    if np.min(distances) > 0.2:
+    if np.min(distances) > 1:
         is_closed.append(0)
     else:
         is_closed.append(1)
