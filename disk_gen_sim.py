@@ -25,7 +25,8 @@ disk_002 = [14, 111]
 start_pos_m002 = [212, 113]
 arr = np.array(arr)
 rad = 50
-
+#%%
+arr = fn_on_resized(arr, normalize_Data)
 #%%
 num_sep = 2
 sep = {}
@@ -37,7 +38,7 @@ for i in sep.keys():
     disk[i] = []
     
 for n in range(len(arr)):
-    img = crop(arr[n], rad, disk_011)
+    img = crop(arr[n], rad, disk_002)
     name = fnames[n]
     disk[name.split('_')[num_sep]].append(img)
 
@@ -46,12 +47,12 @@ for i in sep.keys():
     print(len(disk[i]))
 
 # %%
-np.savez('output/disk_011.npz', **disk)
+np.savez('output/disk_002_dps.npz', **disk)
 print('saved')
 
 #%%
 
-disk_all = np.load('output/disk_011.npz')
+disk_all = np.load('output/disk_002_dps.npz')
 disk = []
 for k, v in disk_all.items():
     disk.extend(v)

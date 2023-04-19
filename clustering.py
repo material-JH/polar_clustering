@@ -7,20 +7,16 @@ from main import *
 import pickle
 import cv2
 #%%
-data_post_exp = np.load('output/set2_SRO_011.npy')
+data_post_exp = np.load('output/set4_Ru_011.npy')
 # data_post_exp = np.concatenate([data_post_exp, np.load('output/set3_Ru_011.npy')], axis=0)
 
 #%%
 eps = 0.2
 
-
 simulations_sep = np.load('output/disk_011.npz')
-
 simulations = {}
-
 for k, v in simulations_sep.items():
     simulations[k] = v
-
 for k, v in simulations.items():
 #    tmp = crop(v, 50, [0, 0])
 #    for i in range(0, 7, 2):
@@ -73,7 +69,9 @@ embedding = get_emb(new, n_neighbors=n_neighbors, min_dist=min_dist, n_component
 #%%
 emb_exp = embedding[:xyz]
 emb_sim = {}
-
+sep = {}
+for k, v in simulations.items():
+    sep[k] = len(v)
 for k, v in simulations.items():
     emb_sim[k] = embedding[xyz + len(v) * sep[k]: xyz + len(v) * (sep[k] + 1)]
 

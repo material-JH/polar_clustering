@@ -190,6 +190,7 @@ def plot_tk(data):
     canvas.get_tk_widget().pack(side=tkinter.TOP, fill=tkinter.BOTH, expand=True)
 
     tkinter.mainloop()
+    plt.show(block=False)
 
 def plot_random(data):
     fig, ax = plt.subplots(3, 3, figsize=(3, 3), dpi=100)
