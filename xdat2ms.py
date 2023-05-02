@@ -1,104 +1,132 @@
 #%%
 import gc
-import random
-from stem4D import *
+from lib.stem4D import *
 from ase import Atoms
-import copy
-from main import *
 from tqdm import tqdm
-import cv2
+from ase.neighborlist import NeighborList
 
-def get_polar(atom:Atoms):
-    anum = atom.get_atomic_numbers()
-    apos = atom.get_positions()
-    polar = 0
-    for num, pos in zip(anum, apos):
-        if num == 22:
-            polar += pos[2] * 4
-        elif num == 8:
-            polar += pos[2] * -2
+def get_polar(atoms:Atoms):
+    apos = atoms.get_positions()
+    polar = []
+    cutoff_radius = 2.5
+    nl = NeighborList([cutoff_radius / 2]*len(atoms), self_interaction=False, bothways=True)
+    nl.update(atoms)
+
+    # loop over each atom in the Atoms object and print its neighboring atoms
+    for i in range(len(atoms)):
+        if atoms[i].symbol == 'Ti':
+        # get the indices of the neighboring atoms for the current atom
+            neighbors, offsets = nl.get_neighbors(i)
+            neighbors = [j for j in neighbors if atoms[j].symbol =='O']
+            center = np.mean(apos[neighbors], axis=0)
+            polar.append(apos[i] - center)
+    return np.mean(polar, axis=0)
+
+def get_polar2(atoms):
+    a = atoms.cell[0, 0]
+    layer_spacing = a / 4
+
+    # loop over the atoms and identify the layer each belongs to
+    layers = {}
+    for atom in atoms:
+        layer_num = int(atom.position[0] / layer_spacing + 0.5)
+        if layer_num in layers:
+            layers[layer_num].append(atom)
         else:
-            polar += pos[2] * 2
+            layers[layer_num] = [atom]
     
-    return polar
-    
-def main(stem: Stem, tilt):
-    refactor = repeat_layer / 20
-
-    stem.generate_pot(N, lattice_constant/2)
-    stem.set_probe(gaussian_spread=10, defocus=100, tilt=tilt)
-    stem.set_scan((2, 2))
-    measurement = stem.scan(batch_size=32)
-    measurement.array = measurement.array.astype(np.float32)
-    new_size = min(int(N * measurement.calibrations[2].sampling / measurement.calibrations[3].sampling),
-                    int(N * measurement.calibrations[3].sampling / measurement.calibrations[2].sampling))
-    test = squaring(measurement, [1,1], new_size, N)
-    new_size = int(new_size / refactor)
-    test = imutils.resize(test[0,0], width=new_size, height=new_size, inter=cv2.INTER_CUBIC)
-    test = np.expand_dims(test, axis=(0, 1))
-
-    measurement_np = crop_center(test, [55 * 4, 55 * 4])
-    return measurement_np
-
-
-def select_atom(atoms_list):
-
-    num_cell = 25
+    polar = []
+    for layer_num, atoms in layers.items():
+        if not 'Ti' in [atom.symbol for atom in atoms]:
+            continue
+        numTi = len([atom for atom in atoms if atom.symbol == 'Ti'])
+        dip = 0
+        for atom in atoms:
+            if atom.symbol == 'Ti':
+                dip += atom.position[0]
+            elif atom.symbol == 'O':
+                dip -= atom.position[0] / 2
+        polar.append(dip / numTi)
+    return np.mean(polar)
+#%%
+def average_pos_atoms(atoms_list):
     pos = np.zeros((len(atoms_list),len(atoms_list[0]), 3))
     for i, atoms in enumerate(atoms_list):
-        pos[i] = copy.deepcopy(atoms.get_positions()) - atoms.get_center_of_mass()
+        pos[i] = atoms.get_positions()
 
-    emb = get_emb(pos.reshape(len(atoms_list), -1), min_dist=0.01)
-    lbl = get_lbl(emb, num_cell)
+    tmp_atoms = atoms_list[0].copy()
+    tmp_atoms.set_positions(np.mean(pos, axis=0))
+    return tmp_atoms
 
-    selected_atoms = []
-
-    for i in range(num_cell):
-        selected_atoms.append(atoms_list[random.choice(np.where(lbl == i)[0])])
-    return selected_atoms
-
-N = 2 ** 10
-lattice_constant = 3.94513
-######################
-
-
-stem = Stem('gpu')
-repeat_layer = 20
+selected_atoms = []
 
 for xdat_type in ['a', 'c', 'g']:
-    atoms_list = read(f'xdat/XDATCAR_{xdat_type}', index=':')
-    selected_atoms = select_atom(atoms_list)
-    for thickness_layer in range(78, 83, 2):
-            for tilt_angle in tqdm(np.linspace(-0.10, 0, 3), desc=f'{xdat_type} {thickness_layer} tilt :'):
-                for direction in ['x', 'y']:
-                    for n, atoms in enumerate(selected_atoms):
-                        atoms = copy.deepcopy(atoms)
-                        atoms.cell = np.diag(np.diag(atoms.cell))
-                        stem.set_atom(atoms)
-                        stem.rotate_atom(90, 'x')
-                        polar = round(get_polar(atoms))
-                        cell = stem.atoms.cell
+    atoms_list = read(f'xdat/XDATCAR_{xdat_type}_fix', index=':')
+    for i in range(0, len(atoms_list), 100):
+        selected_atoms.append(average_pos_atoms(atoms_list[i:i+100]))
+from ase.io import write
+filename = 'XDATCAR_sel'
+for image in selected_atoms:
+    write(filename, image, format='vasp', vasp5=True, direct=True, append=True)
 
-                        fname = f'output/dps/DP_{xdat_type}_{thickness_layer}_{round(tilt_angle, 4)}_{direction}_{n}_{polar}.npy'
-                        if os.path.exists(fname):
-                            continue
+#%%
+from glob import glob
+from tqdm import tqdm
+from gpaw import GPAW
 
-                        stem.repeat_cell((round(repeat_layer * cell[1,1] / cell[0,0]), repeat_layer, thickness_layer))
-                        stem.rotate_atom(tilt_angle, direction)
-                        if direction == 'x':
-                            tilt = (tilt_angle, 0)
-                        else:
-                            tilt = (0, tilt_angle)
-                        measurement_np = main(stem, tilt)
-                        np.save(fname, measurement_np)
-                        gc.collect()
+N = 2 ** 10
+lattice_constant = 8.037805
+######################
+
+polars = []
+repeat_layer = 16
+Aatoms = []
+# for n, atoms in tqdm(enumerate(selected_atoms)):
+for n, finput in enumerate(glob('gpaw/random/*.gpw')):
+    if n < 21:
+        continue
+    atoms = GPAW(finput, txt=None).atoms
+    Aatoms.append(atoms)
+    polar = round(get_polar2(atoms), 4)
+    polars.append(polar)
+    for thickness_layer in tqdm(range(78, 83, 2), desc=f'{n}_{polar}'):
+        stem = Stem('gpu')
+        stem.generate_pot_dft(finput, N // 2 ** 4, lattice_constant, (repeat_layer, repeat_layer, thickness_layer))
+        # stem.set_atom(atoms)
+        # stem.generate_pot(N // 2 ** 4, 3.91)
+        # stem.potential = stem.potential.tile((repeat_layer,repeat_layer, thickness_layer))
+        for tilt_angle in np.linspace(-0.10, 0.1, 5):
+            for direction in ['x', 'y']:
+                    foutput = f'/mnt/e/output/dft/DP_{n}_{polar}_{thickness_layer}_{direction}_{round(tilt_angle, 4)}.npy'
+                    if os.path.exists(foutput):
+                        continue
+                    if direction == 'x':
+                        tilt = (tilt_angle * 10, 0)
+                    else:
+                        tilt = (0, tilt_angle)
+
+                    stem.set_probe(gaussian_spread=10, defocus=0, tilt=tilt)
+                    stem.set_scan((2, 2))
+                    measurement = stem.scan(batch_size=32)
+                    measurement.array = measurement.array.astype(np.float32)
+                    new_size = min(int(N * measurement.calibrations[2].sampling / measurement.calibrations[3].sampling),
+                                    int(N * measurement.calibrations[3].sampling / measurement.calibrations[2].sampling))
+                    test = squaring(measurement, [1,1], new_size, N)
+
+                    measurement_np = crop_center(test, [55 * 4, 55 * 4])
+
+                    np.save(foutput, measurement_np)
+                    gc.collect()
 print('done')
+#%%
+from ase.io import write
+for atoms in Aatoms:
+    write('XDATCAR_fix', atoms, format='vasp', vasp5=True, direct=True, append=True)
 # %%
 import glob
 import os
-for f in glob.glob('output/*'):
-    if f.__contains__('DP_g') or f.__contains__('DP_a_') or f.__contains__('DP_c_'):
-        os.remove(f)
+for f in glob.glob('/mnt/e/output/dft/*'):
+    os.remove(f)
 # %%
 from tqdm import tqdm
 import os

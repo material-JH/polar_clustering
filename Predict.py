@@ -15,7 +15,7 @@ from model.model import NN
 from model.data import DataExp, get_loader, Data
 
 from glob import glob
-import csv
+import matplotlib.pyplot as plt
 
     
 def use_model(data_loader, model, epoch):
@@ -29,18 +29,16 @@ def use_model(data_loader, model, epoch):
     targets = []
     Bs = []
     for i, j in enumerate(data_loader):
-        idx, inputs = j
-        # idx, target, inputs = j
-        # targets.extend(target)
+        # idx, inputs = j
+        idx, target, inputs = j
+        targets.extend(target.cpu().tolist())
         # move input to cuda
         if next(model.parameters()).is_cuda:
             inputs = inputs.to(device='cuda')
-        print(inputs.shape)
         #compute output
         with torch.no_grad():
             output = model(inputs)
-        outputs += output.cpu().tolist()
-        
+        outputs.extend(output.cpu().tolist())
         #measure elapsed time
         batch_time.update(time() - t0)
         t0 = time()
@@ -56,7 +54,7 @@ def use_model(data_loader, model, epoch):
     
     #Bs = [Bs[i] for i in idx]
     # return outputs
-    return outputs, targets
+    return np.array(outputs), np.array(targets)
     #return outputs,targets,mpids,Bs
 class AverageMeter(object):
     def __init__(self):
@@ -75,8 +73,8 @@ class AverageMeter(object):
         self.avg = self.sum / self.count
 
 if __name__ == '__main__':
-    # data_path= './output/disk_011_dps.npz'
-    data_path= './output/set4_Ru_011.npy'
+    data_path= './output/disk_002_dft.npz'
+    # data_path= './output/set4_Ru_011.npy'
     # Best Hyperparameters
     atom_fea_len = 64
     n_conv = 1
@@ -88,8 +86,8 @@ if __name__ == '__main__':
     
     #setup
     print('loading data...',end=''); t = time()
-    data = DataExp(data_path)
-    # data = Data(data_path)
+    # data = DataExp(data_path)
+    data = Data(data_path)
     data.normalize([list(range(len(data)))])
     print('completed', time()-t,'sec')
     loader = get_loader(data,batch_size=batch_size,idx_sets=[list(range(len(data)))])[0]
@@ -101,19 +99,17 @@ if __name__ == '__main__':
         model.cuda()
     os.makedirs('predict',exist_ok=True)
     outputs = []
-    model.load_state_dict(torch.load('weights/W_011_2.pth.tar'))
-    output = use_model(loader,model,0)
-    # output, target = use_model(loader,model,0)
+    model.load_state_dict(torch.load('weights/W.pth.tar'))
+    # output = use_model(loader,model,0)
+    output, target = use_model(loader,model,0)
+    output = data.revert_normalize(output)
+    target = data.revert_normalize(target)
     #json.dump(outputs,open('predict/%s_each_score.json'%(data_path[3:].replace('/','_')),'w'))
-
+    plt.scatter(target, output)
     # json.dump([mpids,outputs,target,std],open('predict/Perov_All.json','w'))
 # %%
-import matplotlib.pyplot as plt
-
-# output = np.reshape(output[0], (5, 38, 10))
-plt.imshow(output[4])
-plt.colorbar()
-plt.axis('off')
+output = np.array(output)
+output = data.revert_normalize(output)
 # %%
 output = np.array(output)
 plt.scatter(target, output)

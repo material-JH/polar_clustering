@@ -99,15 +99,15 @@ class AverageMeter(object):
 # if __name__ == '__main__':
 ################################ Input ####################################
 # data
-data_path='output/disk_011_dps.npz'
+data_path='output/disk_002_dft.npz'
 TrainValTeSplitst = [0.8, 0.1, 0.1]
 
 # Model 
 
 # Training
 batch_size = 256
-lr = 0.0001
-epochs = 300
+lr = 0.0002
+epochs = 1000
 cuda = True
 seed = 1234
 ###########################################################################
@@ -179,4 +179,10 @@ testoutput = np.array(output)[idx].tolist()
 json.dump(testoutput,open('tests/Ypred.json','w'))
 # %%
 import matplotlib.pyplot as plt
+
+plt.imshow(data.raw_Xs[300][0])
 # %%
+with torch.no_grad():
+    output,target,idxs = use_model(val_loader,model,criterion,optimizer,epoch,'predict','Val')
+    output = data.revert_normalize(output)
+    plt.plot(output,target,'.')

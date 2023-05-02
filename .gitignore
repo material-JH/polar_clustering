@@ -8,3 +8,4 @@ __pycache__/
 *.cif
 xdat/XDATCAR_large
 gpaw/
+xdat/*

@@ -4,10 +4,28 @@ import matplotlib.pyplot as plt
 from main import *
 import cv2
 import gc
-#%%
-data = load_data(r"/home/jinho93/project/BST/data/set1_SRO")
-data = crop(data, 450, [50, 50])
 
+#%%
+data = np.load('/home/jinho93/project/Fe2O3/18_64.npy')
+data = np.swapaxes(data, 0, 2)
+data = np.swapaxes(data, 1, 3)
+
+#%%
+import sys
+print(sys.getsizeof(data))
+
+#%%
+plot_tk(np.reshape(data, (-1, *data.shape[-2:])))
+#%%
+data = load_data(r"/home/jinho93/project/Fe2O3")
+# data = crop(data, 450, [50, 50])
+#%%
+data[1] = np.swapaxes(data[1], 0, 2)
+data[1] = np.swapaxes(data[1], 1, 3)
+#%%
+plot_tk(np.reshape(data[1], (-1, *data[1].shape[-2:])))
+#%%
+np.save('output/Fe2O3_old.npy', data[0])
 #%%
 
 around_center = crop(data, 125, [150, 150])
@@ -20,7 +38,7 @@ for i in range(len(com)):
     com[i] = [com[i][0] + 150, com[i][1] + 150]
 
 #%%
-j = 20
+j = 40
 plt.imshow(data[0,j,0])
 
 plt.plot([com[j * 10][0], com[j * 10][0]], [0, data.shape[-2]], 'r')
@@ -73,6 +91,11 @@ plt.imshow(data_post[0, 15, 0] - data_post[0, 35, 4], vmax=data_post[0, 15, 0].m
 # %%
 plt.imshow(imutils.resize(data_post[0, 15, 0], 100))
 # %%
+
+data_post_002_norm = data_post_002_norm - data_post_002_norm.mean()
+data_post_011_norm = data_post_011_norm - data_post_011_norm.mean()
+data_post_002_norm = data_post_002_norm / data_post_002_norm.std()
+data_post_011_norm = data_post_011_norm / data_post_011_norm.std()
 
 means = []
 stds = []

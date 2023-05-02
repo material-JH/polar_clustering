@@ -1,3 +1,4 @@
+#%%
 import csv
 import numpy as np
 import torch
@@ -51,12 +52,12 @@ class Data(Dataset):
         Xs = []
         Ys = []
         
-        for k in data.keys():
-            Ys.append(np.ones(data[k].shape[0])*float(k))
-            Xs.append(data[k])
+        for k, v in data.items():
+            Ys.append(float(k.split('_')[2]))
+            Xs.append(v)
         
-        Xs = np.concatenate(Xs,axis=0)[:,None,:,:]
-        Ys = np.concatenate(Ys,axis=0)
+        Xs = np.array(Xs)[:,None,:,:]
+        Ys = np.array(Ys)
         
         # save it to the object
         self.raw_Ys = Ys
@@ -74,6 +75,10 @@ class Data(Dataset):
         self.Xs = torch.Tensor(self.Xs)
         self.Ys = torch.Tensor(self.Ys)
         
+    def revert_normalize(self, Y):
+        Y = Y*self.Y_std + self.Y_mu
+        return Y
+
     def __len__(self):
         return len(self.raw_Ys)
 
@@ -81,6 +86,9 @@ class Data(Dataset):
         y = self.Ys[idx]
         x = self.Xs[idx,:,:]
         return idx, y,x
+
+if __name__ == "__main__":
+    data = Data('../output/disk_002_dft.npz')
     
 # import torchvision
 
