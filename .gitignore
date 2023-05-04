@@ -9,3 +9,8 @@ __pycache__/
 xdat/XDATCAR_large
 gpaw/
 xdat/*
+
+tmp.py
+output.txt
+split.json
+output*

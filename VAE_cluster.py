@@ -51,7 +51,7 @@ if os.path.exists('output/rvae_002_norm.tar'):
 #%%
 rvae.fit(
     np.concatenate((imstack_train, simulations_tot), axis=0),
-    training_cycles=50,
+    training_cycles=10,
     batch_size=2 ** 8)
 
 #%%
@@ -64,7 +64,7 @@ rvae.fit(
 rvae.save_weights('output/rvae_002_norm')
 # rvae.save_weights('output/rvae_fe2o3_norm')
 #%%
-rvae.manifold2d(cmap='viridis', figsize=(10, 10))
+rvae.manifold2d(cmap='viridis', figsize=(10, 10), d=6)
 #%%
 encoded_mean, encoded_sd  = rvae.encode(imstack_train)
 z11, z12, z13 = encoded_mean[:,0], encoded_mean[:, 1:3], encoded_mean[:, 3:]
@@ -79,10 +79,28 @@ z31, z32, z33 = sim_mean[:,0], sim_mean[:, 1:3], sim_mean[:, 3:]
 
 
 #%%
-plt.scatter(z11, z13[:,1], alpha=.1, color='red')
-plt.scatter(z31, z33[:,1], alpha=.1, color='green')
 
+polarization_keys = [float(k.split('_')[2]) for k in simulations_sep.keys()]
 
+polarization_keys = np.array(polarization_keys)
+polarization_keys *= 100
+# norm_p = polarization_keys - polarization_keys.min()
+# norm_p = norm_p / norm_p.max()
+plt.scatter(z11, z13[:,1], alpha=.1, color='red', label='exp')
+plt.scatter(z31, z33[:,1], alpha=.4, c=polarization_keys, cmap='jet', label='sim')
+plt.colorbar()
+plt.legend()
+plt.xlim(-2, 2)
+plt.rcParams.update({'font.size': 20})
+#%%
+import matplotlib.font_manager as fm
+
+# Get a list of font families
+font_families = sorted(set([fam.name.split()[0] for fam in fm.fontManager.ttflist]))
+
+# Print the list of font families
+for fam in font_families:
+    print(fam)
 # %%
 xyz = reduce((lambda x, y: x * y), data_post_exp.shape[:3])
 
@@ -172,9 +190,60 @@ image_data = (image_data - (-1)) / (2 - (-1))
 plt.imshow(image_data)
 plt.show()
 # %%
-im = im - im.min()
+polarization_keys = [float(k.split('_')[2]) for k in simulations_sep.keys()]
+
+xyz = reduce((lambda x, y: x * y), data_post_exp.shape[:3])
+new_dat = np.zeros(xyz)
+for n in range(xyz):
+    distances = np.linalg.norm(z33 - z13[n], axis=1)
+    nearest_neighbor_index = np.argmin(distances)
+    new_dat[n] = polarization_keys[nearest_neighbor_index]
+
+
+colors = ['#394aff', '#b084ff','#9222ff']
+cmap = LinearSegmentedColormap.from_list('mycmap', colors, N=256)
+
+fig, axs = plt.subplots(nrows=1, ncols=10, figsize=(12, 5))
+for n, img in enumerate(new_dat.reshape(data_post_exp.shape[:3])):
+    im = axs[n].imshow(img, cmap=cmap, aspect='auto')
+    axs[n].axis('off')
+    # if n == 9:
+    #     fig.colorbar(im, ax=axs[n], orientation='vertical', fraction=.2)
+
+cbar = fig.colorbar(im)
+plt.show()
 #%%
-im = im / im.max()
+from scipy.interpolate import interp1d
+fig, axs = plt.subplots(nrows=1, ncols=10, figsize=(12, 5))
+outputs = []
+for n, img in enumerate(new_dat.reshape(data_post_exp.shape[:3])):
+    line = axs[n].fill_betweenx(np.mean(img, axis=1), range(img.shape[0]), where=np.mean(img, axis=1)<0, color='green', alpha=0.3, interpolate=True)
+    f = interp1d(np.linspace(0, img.shape[0] - 1, img.shape[0]), np.mean(img, axis=1), kind='cubic')
+    outputs.append(f(np.linspace(0, img.shape[0] - 1, img.shape[0] * 10)))
+    # outputs.append(np.mean(img, axis=1))
+    axs[n].set_yticks([])
+    axs[n].set_ylim(img.shape[0], 0)
+    # if n == 9:
+    #     fig.colorbar(im, ax=axs[n], orientation='vertical', fraction=.2)
+plt.show()
+
+np.savetxt(X=np.transpose(outputs), fname='outputs.csv', delimiter='\t')
+
+
+#%%
+n = 6
+plt.fill_between(range(img.shape[0]), outputs[n], where=outputs[n]<0, color='grey', alpha=0.3, interpolate=True)
+plt.fill_between(range(img.shape[0]), outputs[n], where=outputs[n]>0, color='red', alpha=0.3, interpolate=True)
 # %%
-im = np.swapaxes(im, 0, 2)
+
+def plot_vertical(data, figsize=(8, 12)):
+    shape = data.shape
+    fig, axs = plt.subplots(nrows=shape[0], ncols=shape[1], figsize=figsize)
+    for i in range(shape[0]):
+        for j in range(shape[1]):
+            axs[i, j].imshow(data[i, j])
+            axs[i, j].axis('off')
+    plt.show()
+
+plot_vertical(data_post_exp[2][::4,::2], figsize=(5, 10))
 # %%

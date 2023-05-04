@@ -29,9 +29,9 @@ def get_circle_conv(size):
     circle[dist <= center[0]] = 1
     return circle
 
-def plot_vertical(data):
+def plot_vertical(data, figsize=(8, 12)):
     shape = data.shape
-    fig, axs = plt.subplots(nrows=shape[0], ncols=shape[1], figsize=(8, 12))
+    fig, axs = plt.subplots(nrows=shape[0], ncols=shape[1], figsize=figsize)
     for i in range(shape[0]):
         for j in range(shape[1]):
             axs[i, j].imshow(data[i, j])

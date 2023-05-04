@@ -128,3 +128,9 @@ for i in range(5):
     ax[i].axis('off')
 plt.show()
 # %%
+fig, ax = plt.subplots(1,5)
+output = np.reshape(output, (5, 38, 10))
+for n, img in enumerate(output):
+    ax[n].imshow(img, cmap='RdBu', interpolation='nearest', vmin=-0.1, vmax=.1)
+    ax[n].axis('off')
+# %%
