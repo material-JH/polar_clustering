@@ -1,20 +1,14 @@
 #%%
 import os
-import json
 from time import time
-from sklearn import metrics
-import sys
 import numpy as np
 
 import torch
 import torch.nn as nn
-import torch.optim as optim
-from torch.optim.lr_scheduler import ExponentialLR
 
-from model.model import NN
-from model.data import DataExp, get_loader, Data
+from model.model import CNN1
+from model.data import DataZ, get_loader
 
-from glob import glob
 import matplotlib.pyplot as plt
 
     
@@ -69,12 +63,10 @@ class AverageMeter(object):
         self.avg = self.sum / self.count
 
 if __name__ == '__main__':
-    data_path_exp= './output/set1_SRO_002.npy'
-    data_path_sim= './output/disk_002_dft.npz'
+    data_path_sim='output/z33.npz'
+    data_path_exp='output/z13.npy'
+
     # Best Hyperparameters
-    atom_fea_len = 64
-    n_conv = 1
-    lr_decay_rate = 0.99
     #var. for dataset loader
     batch_size = 512
     #var for training
@@ -83,14 +75,14 @@ if __name__ == '__main__':
     #setup
     print('loading data...',end=''); t = time()
     # data = DataExp(data_path)
-    data_exp = DataExp(data_path_exp)
+    data_exp = DataZ(data_path_exp)
     data_exp.normalize([list(range(len(data_exp)))])
-    data_sim = Data(data_path_sim)
+    data_sim = DataZ(data_path_sim, 2)
     data_sim.normalize([list(range(len(data_sim)))])
     print('completed', time()-t,'sec')
     loader = get_loader(data_exp,batch_size=batch_size,idx_sets=[list(range(len(data_exp)))])[0]
     #build model
-    model = NN()
+    model = CNN1()
     if cuda:
         if torch.cuda.device_count() > 1:
             model = nn.DataParallel(model)
@@ -99,38 +91,31 @@ if __name__ == '__main__':
     outputs = []
     model.load_state_dict(torch.load('weights/W.pth.tar'))
     output = use_model(loader,model,0)
-    output = data_sim.revert_normalize(output)
+    # output = data_sim.revert_normalize(output)
     # output = data.revert_normalize(output)
     #json.dump(outputs,open('predict/%s_each_score.json'%(data_path[3:].replace('/','_')),'w'))
     plt.plot(output)
     # json.dump([mpids,outputs,target,std],open('predict/Perov_All.json','w'))
 # %%
-
-import numpy as np
-from scipy.interpolate import interp2d
-from scipy.interpolate import RegularGridInterpolator
 fig, ax = plt.subplots(1,5)
-output = np.reshape(output, (5, 38, 10))
-x = np.arange(0, 38)
-y = np.arange(0, 10)
-x_new = np.linspace(0, 37, 190)
-y_new = np.linspace(0, 9, 50)
-
-for i in range(5):
-    # Interpolate the data at the new x and y values
-    interp = RegularGridInterpolator((x, y), output[i], method='cubic')
-    xv, yv = np.meshgrid(y_new, x_new, indexing='ij')
-    points = np.column_stack((yv.ravel(), xv.ravel()))
-    z_new = interp(points)
-    z_new = z_new.reshape(xv.shape)
-    ax[i].imshow(z_new.transpose(), cmap='RdBu', interpolation='nearest', vmin=-0.1, vmax=.1)
-    ax[i].set_title('layer %d'%(i+1))
-    ax[i].axis('off')
-plt.show()
+output_reshape = np.reshape(output, (5, 38, 10))
+for n, img in enumerate(output_reshape):
+    ax[n].imshow(img, cmap='RdBu', interpolation='bessel')
+    ax[n].axis('off')
 # %%
+
+fig, ax = plt.subplots(5,1, figsize=(5, 10))
+for n, img in enumerate(output_reshape):
+    ax[n].plot(np.mean(img, axis=1))
+    ax[n].tick_params(labelbottom=False)
+    ax[n].set_ylim(-1, 1)
+    # ax[n].axis('off')
+# %%
+
+z13 = data_exp.raw_Xs[:,0,4].reshape(5, 38, 10)
+
 fig, ax = plt.subplots(1,5)
-output = np.reshape(output, (5, 38, 10))
-for n, img in enumerate(output):
-    ax[n].imshow(img, cmap='RdBu', interpolation='nearest', vmin=-0.1, vmax=.1)
+for n, img in enumerate(z13):
+    ax[n].imshow(img, cmap='RdBu', interpolation='nearest')
     ax[n].axis('off')
 # %%

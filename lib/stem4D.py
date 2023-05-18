@@ -1,7 +1,7 @@
 import numpy as np
 import matplotlib.pyplot as plt
 from abtem import *
-from abtem.waves import Probe
+from abtem.waves import Probe   
 from abtem.scan import GridScan
 from abtem.detect import PixelatedDetector
 from skimage.transform import resize
@@ -39,9 +39,6 @@ class Stem:
     def rotate_atom(self, tilt_angle, axis):
         self.atoms.rotate(tilt_angle, axis)
         
-    def set_atom_from_file(self, file_path):
-        self.atoms = read(file_path)
-
     def set_atom(self, atoms):
         self.atoms = atoms
         

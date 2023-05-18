@@ -1,20 +1,14 @@
 #%%
 import os
-import json
 from time import time
-from sklearn import metrics
-import sys
 import numpy as np
 
 import torch
 import torch.nn as nn
-import torch.optim as optim
-from torch.optim.lr_scheduler import ExponentialLR
 
-from model.model import NN
-from model.data import DataExp, get_loader, Data
+from model.model import CNN1
+from model.data import DataZ, get_loader
 
-from glob import glob
 import matplotlib.pyplot as plt
 
     
@@ -73,7 +67,7 @@ class AverageMeter(object):
         self.avg = self.sum / self.count
 
 if __name__ == '__main__':
-    data_path= './output/disk_002_dft.npz'
+    data_path= './output/z33.npz'
     # data_path= './output/set4_Ru_011.npy'
     # Best Hyperparameters
     atom_fea_len = 64
@@ -87,12 +81,12 @@ if __name__ == '__main__':
     #setup
     print('loading data...',end=''); t = time()
     # data = DataExp(data_path)
-    data = Data(data_path)
+    data = DataZ(data_path, 2)
     data.normalize([list(range(len(data)))])
     print('completed', time()-t,'sec')
     loader = get_loader(data,batch_size=batch_size,idx_sets=[list(range(len(data)))])[0]
     #build model
-    model = NN()
+    model = CNN1()
     if cuda:
         if torch.cuda.device_count() > 1:
             model = nn.DataParallel(model)
@@ -105,7 +99,7 @@ if __name__ == '__main__':
     output = data.revert_normalize(output)
     target = data.revert_normalize(target)
     #json.dump(outputs,open('predict/%s_each_score.json'%(data_path[3:].replace('/','_')),'w'))
-    plt.scatter(target, output)
+    plt.hist2d(target, output, bins=100, cmap='Blues')
     # json.dump([mpids,outputs,target,std],open('predict/Perov_All.json','w'))
 # %%
 output = np.array(output)

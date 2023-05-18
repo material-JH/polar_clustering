@@ -87,8 +87,131 @@ class Data(Dataset):
         x = self.Xs[idx,:,:]
         return idx, y,x
 
+
+class DataZ(Dataset):
+    def __init__(self, data_path, n=0):
+        # read csv file
+        self._dtype = np.ndarray
+        data = np.load(data_path)
+        if type(data) == np.ndarray:
+            Xs = data
+            self._dtype = np.ndarray
+        else:
+            self._dtype = dict
+            Xs = []
+            Ys = []
+            for k, v in data.items():
+                Ys.append(float(k.split('_')[n]))
+                Xs.append(v)
+        
+            Ys = np.array(Ys)
+            self.raw_Ys = Ys
+
+        Xs = np.array(Xs)
+        self.raw_Xs = Xs
+        
+    def normalize(self,train_idxs):
+        self.X_mu = np.mean(self.raw_Xs[train_idxs,:,:])
+        self.X_std = np.std(self.raw_Xs[train_idxs,:,:])
+        self.Xs = (self.raw_Xs - self.X_mu)/self.X_std
+        self.Xs = torch.Tensor(self.Xs)
+
+        if self._dtype == dict:
+            self.Y_mu = np.mean(self.raw_Ys[train_idxs])
+            self.Y_std = np.std(self.raw_Ys[train_idxs])
+            self.Ys = (self.raw_Ys - self.Y_mu)/self.Y_std
+            self.Ys = torch.Tensor(self.Ys)
+            
+        
+    def revert_normalize(self, Y):
+        Y = Y*self.Y_std + self.Y_mu
+        return Y
+
+    def __len__(self):
+        return len(self.raw_Xs)
+
+    def __getitem__(self, idx):
+        x = self.Xs[idx,:]
+        if self._dtype == dict:
+            y = self.Ys[idx]
+            return idx, y, x
+        else:
+            return idx, x
+
+
+class Datadia(Dataset):
+    def __init__(self):
+        # read csv file
+        from sklearn.datasets import load_diabetes
+
+        data = load_diabetes()
+        # save it to the object
+        self.raw_Ys = data.target
+        self.raw_Xs = data.data[:,None,:]
+        
+    def normalize(self,train_idxs):
+        self.X_mu = np.mean(self.raw_Xs[train_idxs,:,:])
+        self.X_std = np.std(self.raw_Xs[train_idxs,:,:])
+        self.Y_mu = np.mean(self.raw_Ys[train_idxs])
+        self.Y_std = np.std(self.raw_Ys[train_idxs])
+        
+        self.Xs = (self.raw_Xs - self.X_mu)/self.X_std
+        self.Ys = (self.raw_Ys - self.Y_mu)/self.Y_std
+        
+        self.Xs = torch.Tensor(self.Xs)
+        self.Ys = torch.Tensor(self.Ys)
+        
+    def revert_normalize(self, Y):
+        Y = Y*self.Y_std + self.Y_mu
+        return Y
+
+    def __len__(self):
+        return len(self.raw_Ys)
+
+    def __getitem__(self, idx):
+        y = self.Ys[idx]
+        x = self.Xs[idx,:]
+        return idx, y, x
+
+
+class DataHousing(Dataset):
+    def __init__(self):
+        # read csv file
+        import pandas as pd
+        data = pd.read_csv('HousingData.csv')
+        # data = np.loadtxt('../HousingData.csv', delimiter=',', skiprows=1)
+        # save it to the object
+
+        
+        self.raw_Ys = data['MEDV'].values
+        self.raw_Xs = data[['RM', 'TAX', 'DIS']].values[:,None]
+        
+    def normalize(self,train_idxs):
+        self.X_mu = np.mean(self.raw_Xs[train_idxs,:,:])
+        self.X_std = np.std(self.raw_Xs[train_idxs,:,:])
+        self.Y_mu = np.mean(self.raw_Ys[train_idxs])
+        self.Y_std = np.std(self.raw_Ys[train_idxs])
+        
+        self.Xs = (self.raw_Xs - self.X_mu)/self.X_std
+        self.Ys = (self.raw_Ys - self.Y_mu)/self.Y_std
+        
+        self.Xs = torch.Tensor(self.Xs)
+        self.Ys = torch.Tensor(self.Ys)
+        
+    def revert_normalize(self, Y):
+        Y = Y*self.Y_std + self.Y_mu
+        return Y
+
+    def __len__(self):
+        return len(self.raw_Ys)
+
+    def __getitem__(self, idx):
+        y = self.Ys[idx]
+        x = self.Xs[idx,:]
+        return idx, y, x
+
 if __name__ == "__main__":
-    data = Data('../output/disk_002_dft.npz')
+    data = DataHousing()
     
 # import torchvision
 
@@ -129,3 +252,4 @@ if __name__ == "__main__":
 #         x = self.Xs[idx,:,:]
 #         return idx, y,x
         
+# %%

@@ -12,7 +12,7 @@ arr = []
 fnames = []
 
 circle = get_circle_conv(45)
-for file in tqdm(glob('output/dft/*.npy')):
+for file in tqdm(glob('output/dft/*.npy')[:9]):
     arr.append(np.load(file).astype(np.float16))
     file = file.rsplit('/', 1)[-1]
     fnames.append(file[:-4])
@@ -20,12 +20,19 @@ for n in range(len(arr)):
     arr[n] = resize(arr[n][0,0],  [r + 120 for r in arr[n][0,0].shape])
     # arr[n] = arr[n]np.roll(arr[n], get_center(), axis=0)
 #%%
-disk_011 = [62, 159]
-disk_002 = [52, 150]
-start_pos_m002 = [212, 113]
+disk_011 = [98, 198]
+disk_m011 = [195, 97]
+disk_002 = [52, 148]
+disk_m002 = [242, 148]
+#%%
 arr = np.array(arr)
 rad = 50
 #%%
+plt.imshow(arr[0])
+#%%
+plt.imshow(crop(arr[0], rad, disk_m011))
+#%%
+
 plot_tk(arr)
 #%%
 # arr = fn_on_resized(arr, normalize_Data)
@@ -37,7 +44,7 @@ for n in range(len(arr)):
     name = fnames[n]
     if abs(float(name.split('_')[2])) > 0.1:
         continue
-    img = crop(arr[n], rad, disk_002)
+    img = crop(arr[n], rad, disk_m002)
     # img2 = crop(arr[n][::-1], rad, disk_002)
     # name_sp = name.split('_')
     # name_sp[2] = str(-float(name_sp[2]))
@@ -54,12 +61,12 @@ p = [float(name.split('_')[2]) for name in fnames if abs(float(name.split('_')[2
 p = list(set(p))
 plt.plot(p)
 # %%
-np.savez('output/disk_002_dft.npz', **disk)
+np.savez('output/disk_m002_dft.npz', **disk)
 print('saved')
 
 #%%
 
-disk_all = np.load('output/disk_002_dft.npz')
+disk_all = np.load('output/disk_m011_dft.npz')
 disk = []
 for k, v in disk_all.items():
     disk.append(v)

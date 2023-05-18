@@ -127,7 +127,7 @@ def get_lbl(emb, n_clusters=2, gamma=0.5):
     labels = spectral.fit_predict(emb)
     return labels
 
-def select_data(data, eps=0.2, min_samples=1):
+def selected_ind(data, eps=0.2, min_samples=1):
     dbscan = DBSCAN(eps=eps, min_samples=min_samples)
     emb = get_emb(data.reshape((len(data), -1)))
     fit = dbscan.fit_predict(emb)

@@ -5,118 +5,166 @@ from lib.main import *
 import atomai as aoi
 
 #%%
-data_post_exp = np.load('output/set1_SRO_002.npy')
+data_post_exp = np.load('output/set1_Ru_011.npy')
+data_post_exp = np.concatenate((data_post_exp, np.load('output/set1_Ru_m011.npy')), axis=0)
 # data_post_exp = np.load('output/Fe2O3.npy')
 
-data_post_exp2 = np.load('output/set4_Ru_002.npy')
-data_post_exp = np.concatenate((data_post_exp, data_post_exp2), axis=0)
+data_post_exp2 = np.load('output/set4_SRO_011.npy')
+data_post_exp2 = np.concatenate((data_post_exp2, np.load('output/set4_SRO_m011.npy')), axis=0)
+# data_post_exp = np.concatenate((data_post_exp, data_post_exp2), axis=0)
 
 #%%
 data_post_exp = fn_on_resized(data_post_exp, normalize_Data)
-# data_post_exp2 = fn_on_resized(data_post_exp2, normalize_Data)
-# %%
-imstack_train = data_post_exp.reshape(-1, data_post_exp.shape[-2], data_post_exp.shape[-1])
-# imstack_train2 = data_post_exp2.reshape(-1, 50, 50)
+data_post_exp2 = fn_on_resized(data_post_exp2, normalize_Data)
+
+data_stack = data_post_exp.reshape(-1, data_post_exp.shape[-2], data_post_exp.shape[-1])
+data_stack2 = data_post_exp2.reshape(-1, data_post_exp2.shape[-2], data_post_exp2.shape[-1])
+
 #%%
-plot_tk(imstack_train)
-#%%
-import cv2
-simulations_sep = np.load('output/disk_002_dft.npz')
-simulations = {}
-for k, v in simulations_sep.items():
-    simulations[k] = v
-
-n = 5
-for k, v in simulations.items():
-    # simulations[k] = fn_on_resized(v, cv2.GaussianBlur, (n, n), 0)
-    simulations[k] = normalize_Data(simulations[k])
-
-simulations_tot = np.stack(list(simulations.values()), axis=0)
-#%%
-blurred = cv2.GaussianBlur(simulations_tot, (11, 11), 0)
-
-simulations_blurred = np.concatenate([simulations_tot, blurred], axis=0)
-
+simulations_sep = np.load('output/disk_011_dft.npz')
+simulations_sepm = np.load('output/disk_m011_dft.npz')
+simulations_tot = np.stack(list(map(normalize_Data, simulations_sep.values())), axis=0)
+simulations_tot = np.concatenate((simulations_tot, np.stack(list(map(normalize_Data, simulations_sepm.values())), axis=0)), axis=0)
 #%%
 # Intitialize rVAE model
-input_dim = imstack_train.shape[1:]
-rvae = aoi.models.rVAE(input_dim, latent_dim=2,
-                        numlayers_encoder=2, numhidden_encoder=128,
-                        numlayers_decoder=2, numhidden_decoder=128,)
 
-if os.path.exists('output/rvae_002_norm.tar'):
-    rvae.load_weights('output/rvae_002_norm.tar')
+imstack_train = np.concatenate((data_stack, simulations_tot), axis=0)
+
+input_dim = imstack_train.shape[1:]
+rvae = aoi.models.jrVAE(input_dim, latent_dim=47,
+                        numlayers_encoder=2, numhidden_encoder=256,
+                        numlayers_decoder=2, numhidden_decoder=256,
+                        discrete_dim=[2] * 4)
+#%%
+
+
+if os.path.exists('weights/rvae_002_norm_47.tar'):
+    rvae.load_weights('weights/rvae_002_norm_47.tar')
     print('loaded weights')
+#%%
+rvae.save_model('models/rvae_002_norm_2')
+#%%
+rvae = aoi.load_model('models/rvae_002_norm_2.tar')
+
+#%%
+ind_train = np.random.choice(range(len(imstack_train)), len(imstack_train), replace=False)
+ind_test = np.random.choice(ind_train, len(imstack_train) // 5, replace=False)
+ind_train = np.setdiff1d(ind_train, ind_test)
+
+#%%
+rvae.manifold2d()
 
 #%%
 rvae.fit(
-    np.concatenate((imstack_train, simulations_tot), axis=0),
-    training_cycles=10,
-    batch_size=2 ** 8)
+    X_train= imstack_train[ind_train],
+    X_test = imstack_train[ind_test],
+    training_cycles=100,
+    batch_size=2 ** 8,
+    filename='weights/rvae_011_norm_47_256')
 
 #%%
 rvae.fit(
     imstack_train, 
-    training_cycles=100,
+    training_cycles=10,
     batch_size=2 ** 8)
 
 #%%
-rvae.save_weights('output/rvae_002_norm')
+rvae.save_weights('weights/rvae_002_norm_47')
 # rvae.save_weights('output/rvae_fe2o3_norm')
 #%%
 rvae.manifold2d(cmap='viridis', figsize=(10, 10), d=6)
 #%%
-encoded_mean, encoded_sd  = rvae.encode(imstack_train)
+encoded_mean, _ , alpha = rvae.encode(data_stack)
 z11, z12, z13 = encoded_mean[:,0], encoded_mean[:, 1:3], encoded_mean[:, 3:]
 
-# encoded_mean, encoded_sd  = rvae.encode(imstack_train2)
-# z21, z22, z23 = encoded_mean[:,0], encoded_mean[:, 1:3], encoded_mean[:, 3:]
+encoded_mean2, _ , alpha2 = rvae.encode(data_stack2)
+z21, z22, z23 = encoded_mean[:,0], encoded_mean[:, 1:3], encoded_mean[:, 3:]
 #%%
-plot_tk(simulations_tot)
-# %%
-sim_mean, sim_sd  = rvae.encode(simulations_tot)
+sim_mean, sim_sd, alpha_sim  = rvae.encode(simulations_tot)
 z31, z32, z33 = sim_mean[:,0], sim_mean[:, 1:3], sim_mean[:, 3:]
+#%%
+fig, ax = plt.subplots(1, 5, figsize=(15, 10))
+for i, img in enumerate(alpha[:1900,0].reshape(5, 38, 10)):
+    ax[i].imshow(img, cmap='gray')
+    ax[i].axis('off')
+#%%
 
+output = {}
+
+for n, (k, v, v2) in enumerate(zip(simulations_sep.keys(), sim_mean[:len(simulations_sep)], sim_mean[len(simulations_sep):])):
+    if n in min_indexes:
+        output[k] = np.stack((v[[0, *range(3, len(sim_mean[0]))]], v2[[0, *range(3, len(sim_mean[0]))]]), axis=0)
+
+print(len(output))
+np.savez('output/z33', **output)
 
 #%%
 
-polarization_keys = [float(k.split('_')[2]) for k in simulations_sep.keys()]
+data_post_p = np.load('output/set1_Ru_002.npy')
+data_post_m = np.load('output/set1_Ru_m002.npy')
 
-polarization_keys = np.array(polarization_keys)
-polarization_keys *= 100
+data_post_p = fn_on_resized(data_post_p, normalize_Data)
+data_post_m = fn_on_resized(data_post_m, normalize_Data)
+
+stack_p = data_post_p.reshape(-1, data_post_p.shape[-2], data_post_p.shape[-1])
+stack_m = data_post_m.reshape(-1, data_post_m.shape[-2], data_post_m.shape[-1])
+
+output = []
+
+for v, v2 in zip(stack_p, stack_m):
+    output.append(np.stack((rvae.encode(normalize_Data(v))[0][0][[0, *range(3, len(sim_mean[0]))]], rvae.encode(normalize_Data(v2))[0][0][[0, *range(3, len(sim_mean[0]))]]), axis=0))
+
+np.save('output/z13', output)
+
+#%%
+arr = np.array(list(output.values()))
+print(arr.shape)
+#%%
+plt.scatter(z13[:,0], z13[:,1], alpha=.1, color='blue', label='exp')
+plt.scatter(z33[:,0], z33[:,1], alpha=.1, color='red', label='sim')
+#%%
+
 # norm_p = polarization_keys - polarization_keys.min()
 # norm_p = norm_p / norm_p.max()
-plt.scatter(z11, z13[:,1], alpha=.1, color='red', label='exp')
-plt.scatter(z31, z33[:,1], alpha=.4, c=polarization_keys, cmap='jet', label='sim')
+plt.scatter(z13[:,0], z13[:,1], alpha=.1, color='red', label='exp')
+# plt.scatter(z23[:,0], z23[:,1], alpha=.1, color='yellow', label='exp2')
+plt.scatter(z33[:,0], z33[:,1], alpha=.1, color='blue', label='sim')
 plt.colorbar()
 plt.legend()
 plt.xlim(-2, 2)
 plt.rcParams.update({'font.size': 20})
 #%%
-import matplotlib.font_manager as fm
 
-# Get a list of font families
-font_families = sorted(set([fam.name.split()[0] for fam in fm.fontManager.ttflist]))
-
-# Print the list of font families
-for fam in font_families:
-    print(fam)
+plt.imshow(alpha[:1900,0].reshape(5, 38, 10)[2,:,:], cmap='gray')
+plt.colorbar()
 # %%
 xyz = reduce((lambda x, y: x * y), data_post_exp.shape[:3])
-
+# xyz //= 2
+tot = 0
 for n in range(xyz):
     distances = np.linalg.norm(z33 - z13[n], axis=1)
-    if np.min(distances) > 0.01:
+    distances += np.abs(z31 - z11[n])
+    # distances += np.linalg.norm(z33 - z13[n + xyz], axis=1)
+    # distances += np.abs(z31 - z11[n + xyz])
+    if np.min(distances) > 0.02:
         continue
+    if alpha[n,0] > 0.5:
+        continue
+    tot += 1
+    if tot > 10:
+        break
     nearest_neighbor_index = np.argmin(distances)
-    fig, ax = plt.subplots(1, 2, figsize=(3,2))
+    fig, ax = plt.subplots(1, 4, figsize=(5,2))
     # fig.suptitle(f'{n} {nearest_neighbor_index}')
     fig.suptitle('exp vs sim')
-    ax[0].imshow(data_post_exp.reshape(xyz, 50, 50)[n])
+    ax[0].imshow(rvae.decode(np.array([*z13[n], *alpha[n]]))[0])
     ax[0].axis('off')
-    # ax[1].imshow(simulations_tot[near[nearest_neighbor_index]])
-    ax[1].imshow(simulations_tot[nearest_neighbor_index])
+    ax[1].imshow(rvae.decode(np.array([*z33[nearest_neighbor_index], *alpha_sim[nearest_neighbor_index]]))[0])
     ax[1].axis('off')
+    ax[2].imshow(data_stack[n])
+    ax[2].axis('off')
+    ax[3].imshow(simulations_tot[nearest_neighbor_index])
+    ax[3].axis('off')
     plt.show()
 # %%
 xyz = reduce((lambda x, y: x * y), data_post_exp.shape[:3])
@@ -125,7 +173,7 @@ is_closed = []
 for n in range(xyz):
     distances = np.linalg.norm(z33 - z13[n], axis=1)
     # distances = np.linalg.norm(z33 - z13[n], axis=1) + abs(z31 - z11[n]) / 10
-    if np.min(distances) > .01:
+    if np.min(distances) > .1:
         is_closed.append(0)
     else:
         is_closed.append(1)
@@ -138,11 +186,22 @@ for n, img in enumerate(is_closed.reshape(data_post_exp.shape[:3])):
     axs[n].axis('off')
 plt.show()
 #%%
-fig, axs = plt.subplots(nrows=1, ncols=10, figsize=(12, 6))
-for n, img in enumerate(z13.reshape((*data_post_exp.shape[:3], 2))):
+db_cluster = DBSCAN(eps=0.12, min_samples=3).fit(z13)
+print(db_cluster.labels_)
+
+fig, axs = plt.subplots(nrows=1, ncols=5, figsize=(8, 4))
+for n, img in enumerate(db_cluster.labels_.reshape(data_post_exp.shape[:3])):
+    img[np.where(img != 0)] = 1
+    im = axs[n].imshow(img)
+    axs[n].axis('off')
+#%%
+
+fig, axs = plt.subplots(nrows=1, ncols=5, figsize=(12, 6))
+for n, img in enumerate(z13[:1900].reshape((*data_post_exp[:5].shape[:3], -1))):
     img = img - img.min()
     img = img / img.max()
     img = 1 - img
+    img = img[:,:,1:4]
     # img = np.stack([img[:,:,0], np.ones(img.shape[:2]), img[:,:,1]])
     img = np.concatenate([img, np.ones((*img.shape[:2], 1))], axis=-1)
     # img = np.moveaxis(img, 0, -1)
@@ -164,47 +223,30 @@ fig, ax = plt.subplots()
 ax.errorbar(range(tot.shape[0]), means, yerr=stds, fmt='o', capsize=5)
 
 # %%
-
-img = z13.reshape((*data_post_exp.shape[:2], 3))
-print(img.shape)
-
-#%%
-im1 = plt.imshow(img[:,:,0], cmap='Reds', origin='lower', alpha=0.3, label='Channel 1',vmin=-1.5, vmax=1)
-im2 = plt.imshow(img[:,:,1], cmap='Blues', origin='lower', alpha=0.3, label='Channel 2',vmin=-1.5, vmax=1)
-im3 = plt.imshow(img[:,:,2], cmap='Greens', origin='lower', alpha=0.3, label='Channel 3',vmin=-1.5, vmax=1)
-plt.ylim(img.shape[0], 0)
-plt.show()
-# %%
-
-
-import matplotlib.pyplot as plt
-import numpy as np
-
-# create a 3x3 RGB image with values between -1 and 2
-image_data = np.random.uniform(low=-1, high=2, size=(3, 3, 3))
-
-# normalize the data to the range [0, 1]
-image_data = (image_data - (-1)) / (2 - (-1))
-
-# create the plot
-plt.imshow(image_data)
-plt.show()
-# %%
 polarization_keys = [float(k.split('_')[2]) for k in simulations_sep.keys()]
 
-xyz = reduce((lambda x, y: x * y), data_post_exp.shape[:3])
+xyz = reduce((lambda x, y: x * y), data_post_exp[:5].shape[:3])
 new_dat = np.zeros(xyz)
+
+min_indexes = []
+
 for n in range(xyz):
-    distances = np.linalg.norm(z33 - z13[n], axis=1)
+    distances = np.linalg.norm(z33[:len(polarization_keys)] - z13[n], axis=1)
+    distances += abs(z31[:len(polarization_keys)] - z11[n])
+    distances += np.linalg.norm(z33[len(polarization_keys):] - z13[n + xyz], axis=1)
+    distances += abs(z31[len(polarization_keys):] - z11[n + xyz])
+
     nearest_neighbor_index = np.argmin(distances)
+
+    min_indexes.append(nearest_neighbor_index)
     new_dat[n] = polarization_keys[nearest_neighbor_index]
 
 
 colors = ['#394aff', '#b084ff','#9222ff']
 cmap = LinearSegmentedColormap.from_list('mycmap', colors, N=256)
 
-fig, axs = plt.subplots(nrows=1, ncols=10, figsize=(12, 5))
-for n, img in enumerate(new_dat.reshape(data_post_exp.shape[:3])):
+fig, axs = plt.subplots(nrows=1, ncols=5, figsize=(12, 10))
+for n, img in enumerate(new_dat.reshape(data_post_exp[:5].shape[:3])):
     im = axs[n].imshow(img, cmap=cmap, aspect='auto')
     axs[n].axis('off')
     # if n == 9:
@@ -212,6 +254,13 @@ for n, img in enumerate(new_dat.reshape(data_post_exp.shape[:3])):
 
 cbar = fig.colorbar(im)
 plt.show()
+
+#%%
+line = new_dat.reshape(data_post_exp[:5].shape[:3])
+line = np.mean(line, axis=2)
+for l in line:
+    plt.plot(l)
+
 #%%
 from scipy.interpolate import interp1d
 fig, axs = plt.subplots(nrows=1, ncols=10, figsize=(12, 5))
