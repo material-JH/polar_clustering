@@ -10,7 +10,7 @@ import torch
 import torch.nn as nn
 import torch.optim as optim
 from model.model import CNN1, FNN 
-from model.data import DataHousing, Datadia, get_loader, DataZ
+from model.data import DataHousing, DataZFlatten, Datadia, get_loader, DataZ
 
 def use_model(data_loader, model, criterion, optimizer, epoch, mode, name = None):
     assert mode in ['train','predict']
@@ -44,7 +44,7 @@ def use_model(data_loader, model, criterion, optimizer, epoch, mode, name = None
                 output = model(xs)
             outputs += output.cpu().tolist()
         
-        loss = criterion(output.squeeze(), ys)
+        loss = criterion(output, ys)
         #measure accuracy
 
         losses.update(loss.data.cpu().item(), ys.size(0))
@@ -100,12 +100,11 @@ class AverageMeter(object):
 # data
 data_path='output/z33.npz'
 TrainValTeSplitst = [0.8, 0.1, 0.1]
-
 # Model 
 
 # Training
-batch_size = 256
-lr = 0.0002
+batch_size = 2 ** 7
+lr = 0.0003
 epochs = 500
 cuda = True
 seed = 1234
@@ -114,7 +113,10 @@ seed = 1234
 # Loading data
 print('loading data...',end=''); t = time()
 #data = Datadia()
-data = DataZ(data_path, 2)
+data = DataZFlatten(data_path, 2)
+
+
+
 print('completed', time()-t,'sec')
 
 # Make a split
@@ -133,7 +135,7 @@ test_idx = idxs[ntrain+nval:]
 
 ## normalize
 data.normalize(train_idx)
-
+json.dump(data.GetNormParameters(),open('norm_params.json','w'))
 # plt.plot(data.Xs[:,1],data.Ys,'.')
 
 
@@ -143,8 +145,8 @@ train_loader, val_loader, test_loader = get_loader(data,
 json.dump([train_idx,val_idx,test_idx],open('split.json','w'))
 #build model
 
-model = CNN1()
-# model = FNN()
+# model = CNN1()
+model = FNN()
 if cuda:
     if torch.cuda.device_count() > 1:
         model = nn.DataParallel(model,device_ids=[0])

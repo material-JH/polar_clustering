@@ -113,19 +113,25 @@ class FNN(nn.Module):
     def __init__(self):
         super(FNN, self).__init__()
         # 50*50
-        self.fc1 = nn.Linear(96, 48)
-        self.fc2 = nn.Linear(48, 24)
-        self.fc3 = nn.Linear(24, 1)
-        self.act = nn.ELU()
-        
+
+        self.fc1 = nn.Linear(96, 64)
+        self.fc2 = nn.Linear(64,64)
+        self.fc3 = nn.Linear(64, 1)
+        self.act = nn.LeakyReLU()
+        self.bn1 = nn.BatchNorm1d(64)
+        self.bn2 = nn.BatchNorm1d(64)
+
+
     def forward(self, x):
-        x = nn.Flatten()(x)
+        # x = nn.Flatten()(x)
         x = self.fc1(x)
+        x = self.bn1(x)
         x = self.act(x)
         x = self.fc2(x)
+        x = self.bn2(x)
         x = self.act(x)
         x = self.fc3(x)
-        return x
+        return x[:,0]
 
 if __name__ == "__main__":
     nn = CNN1()
