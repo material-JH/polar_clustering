@@ -49,6 +49,11 @@ def get_polar2(atoms):
         polar.append(dip / numTi)
     return np.mean(polar)
 #%%
+from sklearn.cluster import DBSCAN
+from ase.io import read, write
+import numpy as np
+from ase import Atoms, Atom
+
 def average_pos_atoms(atoms_list):
     pos = np.zeros((len(atoms_list),len(atoms_list[0]), 3))
     for i, atoms in enumerate(atoms_list):
@@ -60,13 +65,28 @@ def average_pos_atoms(atoms_list):
 
 selected_atoms = []
 
-for xdat_type in ['a', 'c', 'g']:
-    atoms_list = read(f'xdat/XDATCAR_{xdat_type}_fix', index=':')
-    for i in range(0, len(atoms_list), 100):
-        selected_atoms.append(average_pos_atoms(atoms_list[i:i+100]))
-from ase.io import write
-filename = 'XDATCAR_sel'
-for image in selected_atoms:
+atoms_list = read(f'XDATCAR', index=':')
+for i in range(0, len(atoms_list), 100):
+    selected_atoms.append(average_pos_atoms(atoms_list[i:i+100]))
+
+xy_atoms = []
+
+elements = [['Ti'], ['O'], ['Sr', 'Ba']]
+
+for i in range(0, len(selected_atoms)):
+    ave_atoms = Atoms(cell=selected_atoms[i].cell, pbc=selected_atoms[i].pbc)
+    for element in elements:
+        tmp_atoms = selected_atoms[i][[atom.index for atom in selected_atoms[i] if atom.symbol in element]]
+        xy_clusters = DBSCAN(min_samples=2).fit_predict(tmp_atoms.get_positions()[:, :2])
+        xy_average = []
+        for n in range(len(np.unique(xy_clusters))):
+            xy_average.append(np.mean(tmp_atoms.get_positions()[xy_clusters == n], axis=0))
+        for atom in xy_average:
+            ave_atoms += Atom(element[0], position=atom)
+        xy_atoms.append(ave_atoms)    
+
+filename = 'XDATCAR_average'
+for image in xy_atoms:
     write(filename, image, format='vasp', vasp5=True, direct=True, append=True)
 
 #%%
@@ -95,28 +115,29 @@ for n, finput in enumerate(glob('gpaw/random/*.gpw')):
         # stem.set_atom(atoms)
         # stem.generate_pot(N // 2 ** 4, 3.91)
         # stem.potential = stem.potential.tile((repeat_layer,repeat_layer, thickness_layer))
-        for tilt_angle in np.linspace(-0.10, 0.1, 5):
-            for direction in ['x', 'y']:
-                    foutput = f'/mnt/e/output/dft/DP_{n}_{polar}_{thickness_layer}_{direction}_{round(tilt_angle, 4)}.npy'
-                    if os.path.exists(foutput):
-                        continue
-                    if direction == 'x':
-                        tilt = (tilt_angle * 10, 0)
-                    else:
-                        tilt = (0, tilt_angle)
+        for gaussian in [0, 1, 10]:
+            for tilt_angle in np.linspace(-0.10, 0.1, 5):
+                for direction in ['x', 'y']:
+                        foutput = f'/mnt/e/output/dft/DP_{n}_{polar}_{thickness_layer}_{gaussian}_{direction}_{round(tilt_angle, 4)}.npy'
+                        if os.path.exists(foutput):
+                            continue
+                        if direction == 'x':
+                            tilt = (tilt_angle * 10, 0)
+                        else:
+                            tilt = (0, tilt_angle * 10)
 
-                    stem.set_probe(gaussian_spread=10, defocus=0, tilt=tilt)
-                    stem.set_scan((2, 2))
-                    measurement = stem.scan(batch_size=32)
-                    measurement.array = measurement.array.astype(np.float32)
-                    new_size = min(int(N * measurement.calibrations[2].sampling / measurement.calibrations[3].sampling),
-                                    int(N * measurement.calibrations[3].sampling / measurement.calibrations[2].sampling))
-                    test = squaring(measurement, [1,1], new_size, N)
+                        stem.set_probe(gaussian_spread=gaussian, defocus=0, tilt=tilt)
+                        stem.set_scan((2, 2))
+                        measurement = stem.scan(batch_size=32)
+                        measurement.array = measurement.array.astype(np.float32)
+                        new_size = min(int(N * measurement.calibrations[2].sampling / measurement.calibrations[3].sampling),
+                                        int(N * measurement.calibrations[3].sampling / measurement.calibrations[2].sampling))
+                        test = squaring(measurement, [1,1], new_size, N)
 
-                    measurement_np = crop_center(test, [55 * 4, 55 * 4])
+                        measurement_np = crop_center(test, [55 * 4, 55 * 4])
 
-                    np.save(foutput, measurement_np)
-                    gc.collect()
+                        np.save(foutput, measurement_np)
+                        gc.collect()
 print('done')
 #%%
 from ase.io import write

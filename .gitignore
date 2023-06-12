@@ -16,3 +16,6 @@ split.json
 output*
 
 etc/
+gpaws/*
+weights/*
+models/*

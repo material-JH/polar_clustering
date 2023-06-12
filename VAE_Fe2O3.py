@@ -21,7 +21,7 @@ plot_tk(imstack_train)
 #%%
 # Intitialize rVAE model
 input_dim = imstack_train.shape[1:]
-vae = aoi.models.jVAE(input_dim, latent_dim=2, discrete_dim=[2, 2],
+vae = aoi.models.VAE(input_dim, latent_dim=2, discrete_dim=[2, 2],
                         numlayers_encoder=2, numhidden_encoder=128,
                         numlayers_decoder=2, numhidden_decoder=128,
                         loss='mse', seed=1234)

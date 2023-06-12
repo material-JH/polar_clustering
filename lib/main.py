@@ -60,11 +60,16 @@ def _normalize_Data(data):
     return (data - np.mean(data)) / np.std(data)
 
 
-def load_data(path, contained='dm'):
+def load_data(path):
     data = []
-    for i in os.listdir(path):
-        if i.__contains__(contained):
-            data.append(hs.load(os.path.join(path, i)).data)
+    if os.listdir(path)[0].__contains__('.dm3'):
+        postfix = '.dm3'
+    else:
+        postfix = '.dm4'
+    for i in range(-2, 3):
+        if os.path.exists(os.path.join(path, str(i) + postfix)):
+            print(os.path.join(path, str(i) + postfix))
+            data.append(hs.load(os.path.join(path, str(i) + postfix)).data)
     for d in data:
         if d.shape != data[0].shape:
             return data
@@ -137,70 +142,3 @@ def selected_ind(data, eps=0.2, min_samples=1):
         selected_data.append(data[random.choice(np.where(fit == i)[0])])
 
     return np.array(selected_data)
-
-def plot_tk(data):
-
-    import tkinter
-
-    from matplotlib.backends.backend_tkagg import (
-        FigureCanvasTkAgg, NavigationToolbar2Tk)
-    # Implement the default Matplotlib key bindings.
-    from matplotlib.backend_bases import key_press_handler
-    from matplotlib.figure import Figure
-
-    import numpy as np
-
-    root = tkinter.Tk()
-    root.wm_title("Embedding in Tk")
-
-    fig, ax = plt.subplots(1, 1, figsize=(3, 3), dpi=100)
-    colors = ['#00000F', '#0000FF','#00FF00', '#FF0000', '#FFFF00', '#FFFFFF']
-    cmap = LinearSegmentedColormap.from_list('mycmap', colors, N=256)
-
-    ax.imshow(data[0], cmap=cmap)
-    ax.axis('off')
-    canvas = FigureCanvasTkAgg(fig, master=root)  # A tk.DrawingArea.
-    canvas.draw()
-
-    # pack_toolbar=False will make it easier to use a layout manager later on.
-    toolbar = NavigationToolbar2Tk(canvas, root, pack_toolbar=False)
-    toolbar.update()
-
-    canvas.mpl_connect(
-        "key_press_event", lambda event: print(f"you pressed {event.key}"))
-    canvas.mpl_connect("key_press_event", key_press_handler)
-
-    button_quit = tkinter.Button(master=root, text="Quit", command=root.destroy)
-
-    def update_frequency(new_val):
-        new_val = int(new_val)
-        ax.clear()
-        # ax.imshow(imutils.rotate(data[0, 20, 0], int(new_val), com[200]))
-        # ax.imshow(imutils.rotate(data.sum(axis=2)[2, new_val], int(82), com[200]))
-        ax.imshow(data[new_val], cmap=cmap)
-        ax.axis('off')
-        # required to update canvas and attached toolbar!
-        canvas.draw()
-
-    slider_update = tkinter.Scale(root, from_=0, to=len(data), orient=tkinter.HORIZONTAL,
-                                command=update_frequency, label="Frequency [Hz]")
-
-    # Packing order is important. Widgets are processed sequentially and if there
-    # is no space left, because the window is too small, they are not displayed.
-    # The canvas is rather flexible in its size, so we pack it last which makes
-    # sure the UI controls are displayed as long as possible.
-    button_quit.pack(side=tkinter.BOTTOM)
-    slider_update.pack(side=tkinter.BOTTOM, fill=tkinter.BOTH)
-    toolbar.pack(side=tkinter.BOTTOM, fill=tkinter.X)
-    canvas.get_tk_widget().pack(side=tkinter.TOP, fill=tkinter.BOTH, expand=True)
-
-    tkinter.mainloop()
-    plt.show(block=False)
-
-def plot_random(data):
-    fig, ax = plt.subplots(3, 3, figsize=(3, 3), dpi=100)
-    for i in range(3):
-        for j in range(3):
-            ax[i, j].imshow(data[random.randint(0, len(data))])
-            ax[i, j].axis('off')
-    plt.show()

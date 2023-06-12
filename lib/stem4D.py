@@ -8,7 +8,7 @@ from skimage.transform import resize
 
 from gpaw import GPAW
 from abtem.dft import GPAWPotential
-
+from abtem.potentials import Potential
 def crop_center(dp, crop_dim):
     nrx, nry, nkx, nky = dp.shape
     startx = nkx//2-(crop_dim[0]//2)
@@ -64,13 +64,20 @@ class Stem:
         self.probe = Probe(device=self.device, rolloff=rolloff, gaussian_spread=gaussian_spread, energy=energy, semiangle_cutoff=semiangle_cutoff, defocus=defocus, focal_spread=focal_spread, tilt=tilt)
         self.probe.grid.match(self.potential)
 
-    def set_scan(self, scan_width, angle=None):
+    def set_scan_gpts(self, scan_width, gpts, angle=None):
 
         self.gridscan = GridScan(start=[self.potential.extent[0]/2 - scan_width[0] / 2, 
                                         self.potential.extent[1]/2 - scan_width[0] / 2],
                     end=[self.potential.extent[0]/2 + scan_width[0] / 2, 
                          self.potential.extent[1]/2 + scan_width[0] / 2],
-                    gpts=[1, 1])
+                    gpts=gpts)
+
+        self.detector = PixelatedDetector(max_angle=angle, resample=False)
+
+    def set_scan_sampling(self, start, sampling_width, angle=None):
+
+        self.gridscan = GridScan(start=start,
+                    sampling=sampling_width)
 
         self.detector = PixelatedDetector(max_angle=angle, resample=False)
 

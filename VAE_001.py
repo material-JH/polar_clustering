@@ -3,7 +3,8 @@ import numpy as np
 import matplotlib.pyplot as plt
 from lib.main import *
 import atomai as aoi
-
+from model.model import *
+from lib.plot import *
 #%%
 data_post_exp = np.load('output/set1_Ru_002.npy')
 data_post_exp = np.concatenate((data_post_exp, np.load('output/set1_Ru_m002.npy')), axis=0)
@@ -11,8 +12,13 @@ data_post_exp2 = np.load('output/set4_SRO_002.npy')
 data_post_exp2 = np.concatenate((data_post_exp2, np.load('output/set4_SRO_m002.npy')), axis=0)
 
 #%%
-data_post_exp = fn_on_resized(data_post_exp, normalize_Data)
-data_post_exp2 = fn_on_resized(data_post_exp2, normalize_Data)
+
+mean = np.mean(data_post_exp)
+std = np.std(data_post_exp)
+data_post_exp = (data_post_exp - mean) / std
+mean2 = np.mean(data_post_exp2)
+std2 = np.std(data_post_exp2)
+data_post_exp2 = (data_post_exp2 - mean2) / std2
 
 data_stack = data_post_exp.reshape(-1, data_post_exp.shape[-2], data_post_exp.shape[-1])
 data_stack2 = data_post_exp2.reshape(-1, data_post_exp2.shape[-2], data_post_exp2.shape[-1])
@@ -20,33 +26,41 @@ data_stack2 = data_post_exp2.reshape(-1, data_post_exp2.shape[-2], data_post_exp
 #%%
 simulations_sep = np.load('output/disk_002_dft.npz')
 simulations_sepm = np.load('output/disk_m002_dft.npz')
-simulations_tot = np.stack(list(map(normalize_Data, simulations_sep.values())), axis=0)
-simulations_tot = np.concatenate((simulations_tot, np.stack(list(map(normalize_Data, simulations_sepm.values())), axis=0)), axis=0)
+simulations_tot = np.stack(simulations_sep.values(), axis=0)
+simulations_tot = np.concatenate((simulations_tot, np.stack(simulations_sepm.values(), axis=0)), axis=0)
+#%%
+
+mean3 = np.mean(simulations_tot)
+std3 = np.std(simulations_tot)
+simulations_tot = (simulations_tot - mean3) / std3
 #%%
 # Intitialize rVAE model
 
 imstack_train = np.concatenate((data_stack, simulations_tot), axis=0)
 
 input_dim = imstack_train.shape[1:]
-rvae = aoi.models.jrVAE(input_dim, latent_dim=47,
+
+#%%
+filename = 'weights/rvae_002_norm_47.tar'
+rvae = regrVAE(input_dim, latent_dim=10,
                         numlayers_encoder=2, numhidden_encoder=256,
                         numlayers_decoder=2, numhidden_decoder=256,
-                        discrete_dim=[2] * 4)
+                        include_reg=True, include_div=True, include_cont=True,
+                        reg_weight=.1, div_weight=.1, cont_weight=10, filename=filename)
 #%%
 
 
-if os.path.exists('weights/rvae_002_norm_47.tar'):
-    rvae.load_weights('weights/rvae_002_norm_47.tar')
+if os.path.exists('weights/regrvae_002_norm_47_256.tar'):
+    rvae.load_weights('weights/regrvae_002_norm_47_256.tar')
     print('loaded weights')
 #%%
 rvae.save_model('models/rvae_002_norm_47')
 #%%
 rvae = aoi.load_model('models/rvae_002_norm_47.tar')
-
 #%%
-ind_train = np.random.choice(range(len(imstack_train)), len(imstack_train), replace=False)
-ind_test = np.random.choice(ind_train, len(imstack_train) // 5, replace=False)
-ind_train = np.setdiff1d(ind_train, ind_test)
+#%%
+ind_test = np.random.choice(range(len(imstack_train)), len(imstack_train) // 5, replace=False)
+ind_train = np.setdiff1d(range(len(imstack_train)), ind_test)
 
 #%%
 rvae.manifold2d()
@@ -55,9 +69,9 @@ rvae.manifold2d()
 rvae.fit(
     X_train= imstack_train[ind_train],
     X_test = imstack_train[ind_test],
-    training_cycles=150,
+    training_cycles=50,
     batch_size=2 ** 8,
-    filename='weights/rvae_002_norm_47_256')
+    filename='weights/regrvae_002_norm_47_256')
 
 #%%
 rvae.fit(
@@ -68,18 +82,18 @@ rvae.fit(
 #%%
 rvae.manifold2d(cmap='viridis', figsize=(10, 10), d=6)
 #%%
-encoded_mean, _ , alpha = rvae.encode(data_stack)
+encoded_mean, _ = rvae.encode(data_stack)
 z11, z12, z13 = encoded_mean[:,0], encoded_mean[:, 1:3], encoded_mean[:, 3:]
 
-encoded_mean2, _ , alpha2 = rvae.encode(data_stack2)
+encoded_mean2, _ = rvae.encode(data_stack2)
 z21, z22, z23 = encoded_mean2[:,0], encoded_mean2[:, 1:3], encoded_mean2[:, 3:]
 #%%
-sim_mean, sim_sd, alpha_sim  = rvae.encode(simulations_tot)
+sim_mean, sim_sd  = rvae.encode(simulations_tot)
 z31, z32, z33 = sim_mean[:,0], sim_mean[:, 1:3], sim_mean[:, 3:]
 #%%
 fig, ax = plt.subplots(1, 5, figsize=(15, 10))
-for i, img in enumerate(alpha[:1900,4].reshape(5, 38, 10)):
-    ax[i].imshow(img, cmap='gray')
+for i, img in enumerate(encoded_mean[:1900,10].reshape(5, 38, 10)):
+    ax[i].imshow(img, cmap='RdBu')
     ax[i].axis('off')
 #%%
 
@@ -90,7 +104,7 @@ for n, (k, v, v2) in enumerate(zip(simulations_sep.keys(), sim_mean[:len(simulat
     output[k] = np.stack((v[[0, *range(3, len(sim_mean[0]))]], v2[[0, *range(3, len(sim_mean[0]))]]), axis=0)
 
 print(len(output))
-np.savez('output/z33', **output)
+np.savez('output/z3', **output)
 
 #%%
 
@@ -108,7 +122,7 @@ output = []
 for v, v2 in zip(stack_p, stack_m):
     output.append(np.stack((rvae.encode(normalize_Data(v))[0][0][[0, *range(3, len(sim_mean[0]))]], rvae.encode(normalize_Data(v2))[0][0][[0, *range(3, len(sim_mean[0]))]]), axis=0))
 
-np.save('output/z13', output)
+np.save('output/z1', output)
 #%%
 
 data_post_p = np.load('output/set4_SRO_002.npy')
@@ -125,14 +139,39 @@ output = []
 for v, v2 in zip(stack_p, stack_m):
     output.append(np.stack((rvae.encode(normalize_Data(v))[0][0][[0, *range(3, len(sim_mean[0]))]], rvae.encode(normalize_Data(v2))[0][0][[0, *range(3, len(sim_mean[0]))]]), axis=0))
 
-np.save('output/z23', output)
+np.save('output/z2', output)
 
 #%%
 arr = np.array(list(output.values()))
 print(arr.shape)
 #%%
+
+from cuml import TSNE
+
+# tsne = UMAP(n_components=2, n_neighbors=15, min_dist=0.01, metric='euclidean', verbose=True, transform_seed=42)
+tsne = TSNE(n_components=2, perplexity=30, verbose=True)
+tsne.fit_transform(np.concatenate((z13, z33), axis=0))
+#%%
+from matplotlib.colors import LogNorm
+plt.hist2d(tsne.embedding_[len(z13):,0], tsne.embedding_[len(z13):,1], bins=100, cmap='Blues', alpha=.5, norm=LogNorm())
+# plt.hist2d(tsne.embedding_[:len(z13),0], tsne.embedding_[:len(z13),1], bins=100, cmap='Reds', alpha=.7, norm=LogNorm())
+
+plt.tick_params(axis='both', direction='in')
+
+#%%
+np.savetxt('output/umap_002_sim.txt', tsne.embedding_[len(z13):])
+np.savetxt('output/umap_002_exp.txt', tsne.embedding_[:len(z13)])
+#%%
+plt.scatter(tsne.embedding_[len(z13):,0], tsne.embedding_[len(z13):,1], alpha=.1, color='blue', label='sim')
+plt.scatter(tsne.embedding_[:len(z13),0], tsne.embedding_[:len(z13),1], alpha=.1, color='red', label='exp')
+#%%
+#%%
+
 plt.scatter(z13[:,0], z13[:,1], alpha=.1, color='blue', label='exp')
 plt.scatter(z33[:,0], z33[:,1], alpha=.1, color='red', label='sim')
+#%%
+plt.hist2d(z11[:1900], z13[:1900,0], bins=100, cmap='Reds', alpha=.5, norm=LogNorm())
+plt.hist2d(z31, z33[:,0], bins=100, cmap='Blues', alpha=.7, norm=LogNorm())
 #%%
 
 # norm_p = polarization_keys - polarization_keys.min()
@@ -170,17 +209,17 @@ for n in range(xyz):
     if tot > 10:
         break
     nearest_neighbor_index = np.argmin(distances)
-    fig, ax = plt.subplots(1, 4, figsize=(5,2))
+    fig, ax = plt.subplots(2, 2, figsize=(5,5))
     # fig.suptitle(f'{n} {nearest_neighbor_index}')
-    fig.suptitle('exp vs sim')
-    ax[0].imshow(rvae.decode(np.array([*z13[n], *alpha[n]]))[0])
-    ax[0].axis('off')
-    ax[1].imshow(rvae.decode(np.array([*z33[nearest_neighbor_index], *alpha_sim[nearest_neighbor_index]]))[0])
-    ax[1].axis('off')
-    ax[2].imshow(data_stack[n])
-    ax[2].axis('off')
-    ax[3].imshow(simulations_tot[nearest_neighbor_index])
-    ax[3].axis('off')
+    fig.suptitle('original vs decoded')
+    ax[0,1].imshow(rvae.decode(np.array([*z13[n], *alpha[n]]))[0])
+    ax[0,1].axis('off')
+    ax[1,1].imshow(rvae.decode(np.array([*z33[nearest_neighbor_index], *alpha_sim[nearest_neighbor_index]]))[0])
+    ax[1,1].axis('off')
+    ax[0,0].imshow(data_stack[n])
+    ax[0,0].axis('off')
+    ax[1,0].imshow(simulations_tot[nearest_neighbor_index])
+    ax[1,0].axis('off')
     plt.show()
 # %%
 xyz = reduce((lambda x, y: x * y), data_post_exp.shape[:3])

@@ -4,6 +4,9 @@ import matplotlib.pyplot as plt
 from lib.main import *
 import atomai as aoi
 from lib.plot import *
+import cv2
+
+
 #%%
 data_post_exp = np.load('output/set1_Ru_011.npy')
 data_post_exp = np.concatenate((data_post_exp, np.load('output/set1_Ru_m011.npy')), axis=0)
@@ -22,8 +25,13 @@ simulations_sepm = np.load('output/disk_m011_dft.npz')
 simulations_tot = np.stack(list(map(normalize_Data, simulations_sep.values())), axis=0)
 simulations_tot = np.concatenate((simulations_tot, np.stack(list(map(normalize_Data, simulations_sepm.values())), axis=0)), axis=0)
 #%%
+import cv2
+simulations_tot2 = fn_on_resized(simulations_tot, cv2.resize, (48, 50))
+plot_tk(simulations_tot2)
+#%%
 imstack_train = np.concatenate((data_stack, simulations_tot), axis=0)
 input_dim = imstack_train.shape[1:]
+#%%
 rvae = aoi.models.jrVAE(input_dim, latent_dim=47,
                         numlayers_encoder=2, numhidden_encoder=256,
                         numlayers_decoder=2, numhidden_decoder=256,
@@ -31,17 +39,18 @@ rvae = aoi.models.jrVAE(input_dim, latent_dim=47,
 #%%
 rvae = aoi.load_model('models/rvae_011_norm_47_256.tar')
 #%%
-ind_train = np.random.choice(range(len(imstack_train)), len(imstack_train), replace=False)
-ind_test = np.random.choice(ind_train, len(imstack_train) // 5, replace=False)
-ind_train = np.setdiff1d(ind_train, ind_test)
-
+rvae.load_weights('weights/rvae_011_norm_47_256.tar')
+#%%
+ind_test = np.random.choice(len(imstack_train), len(imstack_train) // 5, replace=False)
+ind_train = np.setdiff1d(np.arange(len(imstack_train)), ind_test)
 #%%
 rvae.fit(
     X_train= imstack_train[ind_train],
     X_test = imstack_train[ind_test],
-    training_cycles=150,
+    training_cycles=40,
     batch_size=2 ** 8,
     filename='weights/rvae_011_norm_47_256')
+#%%
 rvae.save_model('models/rvae_011_norm_47_256')
 #%%
 encoded_mean, _ , alpha = rvae.encode(data_stack)
@@ -54,21 +63,18 @@ sim_mean, sim_sd, alpha_sim  = rvae.encode(simulations_tot)
 z31, z32, z33 = sim_mean[:,0], sim_mean[:, 1:3], sim_mean[:, 3:]
 #%%
 
-#%%
-
 output = {}
 
 for n, (k, v, v2) in enumerate(zip(simulations_sep.keys(), sim_mean[:len(simulations_sep)], sim_mean[len(simulations_sep):])):
-    if n in min_indexes:
-        output[k] = np.stack((v[[0, *range(3, len(sim_mean[0]))]], v2[[0, *range(3, len(sim_mean[0]))]]), axis=0)
+    output[k] = np.stack((v[[0, *range(3, len(sim_mean[0]))]], v2[[0, *range(3, len(sim_mean[0]))]]), axis=0)
 
 print(len(output))
-np.savez('output/z33', **output)
+np.savez('output/z3_011', **output)
 
 #%%
 
-data_post_p = np.load('output/set1_Ru_002.npy')
-data_post_m = np.load('output/set1_Ru_m002.npy')
+data_post_p = np.load('output/set1_Ru_011.npy')
+data_post_m = np.load('output/set1_Ru_m011.npy')
 
 data_post_p = fn_on_resized(data_post_p, normalize_Data)
 data_post_m = fn_on_resized(data_post_m, normalize_Data)
@@ -81,16 +87,50 @@ output = []
 for v, v2 in zip(stack_p, stack_m):
     output.append(np.stack((rvae.encode(normalize_Data(v))[0][0][[0, *range(3, len(sim_mean[0]))]], rvae.encode(normalize_Data(v2))[0][0][[0, *range(3, len(sim_mean[0]))]]), axis=0))
 
-np.save('output/z13', output)
+np.save('output/z1_011', output)
+
+#%%
+
+data_post_p = np.load('output/set4_SRO_011.npy')
+data_post_m = np.load('output/set4_SRO_m011.npy')
+
+data_post_p = fn_on_resized(data_post_p, normalize_Data)
+data_post_m = fn_on_resized(data_post_m, normalize_Data)
+
+stack_p = data_post_p.reshape(-1, data_post_p.shape[-2], data_post_p.shape[-1])
+stack_m = data_post_m.reshape(-1, data_post_m.shape[-2], data_post_m.shape[-1])
+
+output = []
+
+for v, v2 in zip(stack_p, stack_m):
+    output.append(np.stack((rvae.encode(normalize_Data(v))[0][0][[0, *range(3, len(sim_mean[0]))]], rvae.encode(normalize_Data(v2))[0][0][[0, *range(3, len(sim_mean[0]))]]), axis=0))
+
+np.save('output/z2_011', output)
 
 #%%
 arr = np.array(list(output.values()))
 print(arr.shape)
 #%%
-plt.scatter(z13[:,0], z13[:,1], alpha=.1, color='blue', label='exp')
-plt.scatter(z33[:,0], z33[:,1], alpha=.1, color='red', label='sim')
+plt.scatter(z13[:,11], z13[:,15], alpha=.1, color='blue', label='exp')
+plt.scatter(z33[:,11], z33[:,15], alpha=.1, color='red', label='sim')
 #%%
 
+from cuml import TSNE
+
+# tsne = TSNE(n_components=2, perplexity=30, verbose=True)
+# tsne.fit_transform(np.concatenate((z23, z33), axis=0))
+umap = UMAP(n_components=2, n_neighbors=15, min_dist=0.1, metric='euclidean', verbose=True)
+umap.fit_transform(np.concatenate((z13, z33), axis=0))
+model = umap
+from matplotlib.colors import LogNorm
+#%%
+plt.hist2d(model.embedding_[len(z13):,0], model.embedding_[len(z13):,1], bins=100, cmap='Blues', alpha=.5, norm=LogNorm())
+plt.hist2d(model.embedding_[:len(z13),0], model.embedding_[:len(z13),1], bins=100, cmap='Reds', alpha=.7, norm=LogNorm())
+plt.xlim(-15, 15)
+plt.ylim(-15, 15)
+plt.tick_params(axis='both', direction='in')
+
+#%%
 # norm_p = polarization_keys - polarization_keys.min()
 # norm_p = norm_p / norm_p.max()
 plt.scatter(z13[:,0], z13[:,1], alpha=.1, color='red', label='exp')
@@ -176,10 +216,10 @@ new_dat = np.zeros(xyz)
 min_indexes = []
 
 for n in range(xyz):
-    distances = np.linalg.norm(z33[:len(polarization_keys)] - z13[n], axis=1)
-    distances += abs(z31[:len(polarization_keys)] - z11[n])
-    distances += np.linalg.norm(z33[len(polarization_keys):] - z13[n + xyz], axis=1)
-    distances += abs(z31[len(polarization_keys):] - z11[n + xyz])
+    distances = np.linalg.norm(z33[:len(polarization_keys)] - z23[n], axis=1)
+    # distances += abs(z31[:len(polarization_keys)] - z21[n])
+    distances += np.linalg.norm(z33[len(polarization_keys):] - z23[n + xyz], axis=1)
+    # distances += abs(z31[len(polarization_keys):] - z21[n + xyz])
 
     nearest_neighbor_index = np.argmin(distances)
 
