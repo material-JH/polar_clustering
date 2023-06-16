@@ -69,7 +69,7 @@ class AverageMeter(object):
 
 if __name__ == '__main__':
     data_path_sim='output/z3.npz'
-    data_path_exp='output/z2.npy'
+    data_path_exp='output/z1.npy'
 
     # Best Hyperparameters
     #var. for dataset loader
@@ -109,7 +109,7 @@ if __name__ == '__main__':
 output = data_sim.revert_normalize(output)
 #%%
 
-z1_10 = data_exp.raw_Xs[:,10].reshape(5, 38, 10)
+z1_10 = data_exp.raw_Xs[:,17].reshape(5, 38, 10)
 z1_0 = data_exp.raw_Xs[:,0].reshape(5, 38, 10)
 
 for n in range(5):
@@ -122,7 +122,7 @@ for n in range(5):
     plt.show()
 
 #%%
-fig, ax = plt.subplots(5,1)
+fig, ax = plt.subplots(3,1)
 # vmax = np.max(output)
 # vmin = np.min(output)
 vmax = .13 
@@ -132,9 +132,9 @@ output_reshape = np.reshape(output, (5, 38, 10))
 z1_10 = data_exp.raw_Xs[:,-8].reshape(5, 38, 10)
 z1_0 = data_exp.raw_Xs[:,0].reshape(5, 38, 10)
 for n, img in enumerate(output_reshape):
-    # if n % 2 == 1:
-    #     continue
-    # n = n // 2
+    if n % 2 == 1:
+        continue
+    n = n // 2
 
 
     # pcm = ax[n].imshow(img, cmap='RdBu', interpolation='bessel',vmin=vmin,vmax=vmax)
@@ -145,7 +145,7 @@ for n, img in enumerate(output_reshape):
     trueth = trueth + (z1_10[n] > 0.5).astype(int)
     trueth = trueth.astype(bool)
     trueth = trueth.T
-    ax[n].imshow((trueth), cmap='gray_r', alpha=trueth * .5, aspect='auto')
+    # ax[n].imshow((trueth), cmap='gray_r', alpha=trueth * .5, aspect='auto')
     ax[n].axis('off')
     ax2 = ax[n].twinx()
     ax2.plot(np.mean(img, axis=1) * -100, c='k')
