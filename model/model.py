@@ -295,12 +295,19 @@ class prVAE2(aoi.models.rVAE):
 class conv_pVAE(aoi.models.VAE):
     
     def __init__(self, in_dim: int = None, latent_dim: int = 2, nb_classes: int = 0, seed: int = 0, **kwargs: int | bool | str) -> None:
-        self.h_dim = 256
+        self.h_dim = kwargs.get("numhidden_encoder", 256)
         self.p_losses = []
         super().__init__(in_dim, latent_dim, nb_classes, seed, **kwargs)
 
-    def elbo_fn(self, x: torch.Tensor, x_reconstr: torch.Tensor, *args: torch.Tensor, **kwargs: Union[list, float, int]) -> torch.Tensor:
-        return reg_loss(self.loss, self.in_dim, x, x_reconstr, *args, **kwargs)
+    def elbo_fn(self, x: torch.Tensor, x_reconstr: torch.Tensor, y: torch.Tensor, *args: torch.Tensor, **kwargs: Union[list, float, int]) -> torch.Tensor:
+        if y is not None:
+            z_mean, z_logsd = args
+            p = self.fcn_net(z_mean)
+            pl = p_loss(y, p, **kwargs)
+            self.p_losses.append(pl.cpu().detach().numpy())
+            return reg_loss(self.loss, self.in_dim, x, x_reconstr, *args, **kwargs) + pl
+        else:
+            return reg_loss(self.loss, self.in_dim, x, x_reconstr, *args, **kwargs)
 
     def forward_compute_elbo(self,
                              x: torch.Tensor,
@@ -311,6 +318,8 @@ class conv_pVAE(aoi.models.VAE):
         VAE's forward pass with training/test loss computation
         """
         x = x.to(self.device)
+        if len(x.shape) == 3:
+            x = x[:,None,...]
         if mode == "eval":
             with torch.no_grad():
                 z_mean, z_logsd = self.encoder_net(x)
@@ -324,17 +333,12 @@ class conv_pVAE(aoi.models.VAE):
                 x_reconstr = self.decoder_net(z)
         else:
             x_reconstr = self.decoder_net(z)
+        return self.elbo_fn(x, x_reconstr, y, z_mean, z_logsd, **self.kdict_)
 
-        return self.elbo_fn(x, x_reconstr, z_mean, z_logsd, **self.kdict_)
-
-    def compute_p(self, x2: torch.Tensor):
+    def compute_p(self, x: torch.Tensor):
         with torch.no_grad():
-            z2d_mean = torch.zeros((x2.shape[0], (self.z_dim - 2) * 2)).to(self.device)
-            for i in range(2):
-                x = x2[:,i,:,:]
-                z_mean, z_logsd = self.encoder_net(x)
-                z2d_mean[:, i * (self.z_dim - 2): (i + 1) * (self.z_dim - 2)] = z_mean[:, [0, *range(3, self.z_dim)]]
-            p = self.fcn_net(z2d_mean)
+            z_mean, z_logsd = self.encode(torch.tensor(x).to(self.device))
+            p = self.fcn_net(torch.tensor(z_mean).to(self.device))
         return p
 
     def _check_inputs(self, X_train: np.ndarray, y_train: np.ndarray | None = None, X_test: np.ndarray | None = None, y_test: np.ndarray | None = None) -> None:
@@ -349,7 +353,7 @@ class conv_pVAE(aoi.models.VAE):
         """
         self.encoder_net = encoder_net
         self.decoder_net = decoder_net
-        in_dim = (self.z_dim - 2) * 2
+        in_dim = self.z_dim
         # in_dim = self.z_dim - 3 if self.translation else self.z_dim - 2
         self.fcn_net = fcnNet(in_dim, self.h_dim)
         self.encoder_net.to(self.device)
@@ -392,7 +396,7 @@ class fcnNet(nn.Module):
         return self.net(x)[:,0]
 
 class EncoderNet(nn.Module):
-    def __init__(self, input_channel, hidden_channel, kernel_size=5, stride=1, padding=2, *args, **kwargs) -> None:
+    def __init__(self, input_channel, hidden_channel, kernel_size=5, stride=1, padding=2, latent_dim: int = 2, *args, **kwargs) -> None:
         super().__init__()
 
         self.encoder = nn.Sequential(
@@ -416,10 +420,46 @@ class EncoderNet(nn.Module):
             nn.BatchNorm2d(hidden_channel),
             nn.LeakyReLU(),
             nn.MaxPool2d(kernel_size=2, stride=2),
+            nn.BatchNorm2d(hidden_channel),
+            nn.LeakyReLU(),
+            nn.MaxPool2d(kernel_size=2, stride=2),
         )
+        self.fc11 = nn.Linear(hidden_channel, latent_dim)
+        self.fc12 = nn.Linear(hidden_channel, latent_dim)
+        self._out = nn.Softplus() if kwargs.get("softplus_out") else lambda x: x
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
-        return self.encoder(x).squeeze()
+        x = self.encoder(x).squeeze()
+        z_mu = self.fc11(x)
+        z_logstd = self._out(self.fc12(x))
+        return z_mu, z_logstd
+
+class DecoderNet(nn.Module):
+    def __init__(self, latent_dim: int = 2, hidden_channel=64, output_channel=1, kernel_size=2, stride=2, *args, **kwargs) -> None:
+        super().__init__(*args, **kwargs)
+        self.decoder = nn.Sequential(
+            nn.ConvTranspose2d(latent_dim, hidden_channel, kernel_size=kernel_size, stride=stride),
+            nn.BatchNorm2d(hidden_channel),
+            nn.LeakyReLU(),
+            nn.ConvTranspose2d(hidden_channel, hidden_channel, kernel_size=kernel_size, stride=stride),
+            nn.BatchNorm2d(hidden_channel),
+            nn.LeakyReLU(),
+            nn.ConvTranspose2d(hidden_channel, hidden_channel, kernel_size=kernel_size, stride=stride),
+            nn.BatchNorm2d(hidden_channel),
+            nn.LeakyReLU(),
+            nn.ConvTranspose2d(hidden_channel, hidden_channel, kernel_size=kernel_size, stride=stride),
+            nn.BatchNorm2d(hidden_channel),
+            nn.LeakyReLU(),
+            nn.ConvTranspose2d(hidden_channel, hidden_channel, kernel_size=kernel_size, stride=stride),
+            nn.BatchNorm2d(hidden_channel),
+            nn.LeakyReLU(),
+            nn.ConvTranspose2d(hidden_channel, output_channel, kernel_size=kernel_size, stride=stride),
+            )
+    
+    def forward(self, z):
+        z = z.unsqueeze(-1).unsqueeze(-1)
+        z = self.decoder(z)
+        return z
 
 def manifold2d(vae, zmin, zmax, d) -> None:  # use torchvision's grid here
     z_p = np.linspace(zmin, zmax, d)
@@ -432,7 +472,6 @@ def manifold2d(vae, zmin, zmax, d) -> None:  # use torchvision's grid here
     for i in range(d):
         ax[i].imshow(imgs[i])
         ax[i].axis("off")
-
 
 class NN(nn.Module):
     def __init__(self):
@@ -532,16 +571,80 @@ class FNN(nn.Module):
         x = self.fc3(x)
         return x[:,0]
 
+class testnet(nn.Module):
+    def __init__(self, *args, **kwargs) -> None:
+        super().__init__(*args, **kwargs)
+        self.net = nn.Sequential(
+            nn.ConvTranspose2d(2, 128, kernel_size=2, stride=2),
+            nn.BatchNorm2d(128),
+        )
+    
+    def forward(self, x):
+        return self.net(x)
+
 if __name__ == "__main__":
-    data_post_exp = np.load('../output/set1_Ru_002.npy')
-    data_stack = data_post_exp.reshape(-1, 1, 50, 50)
-    data_stack = torch.tensor(data_stack).float()
-    encoder = EncoderNet(1, 5)
+    tnet = testnet()
+    print(tnet(torch.randn(3, 2, 1, 1)).shape)
     #%%
-    encoder(data_stack[0:64]).shape
+    enet = EncoderNet(1, 64, latent_dim=5)
+    print(enet(torch.randn(3, 1, 64, 64))[0].shape)    
+
+    dnet = DecoderNet()
+    print(dnet(torch.randn(10, 2)).shape)
+    #%%
+    simulations_sep = np.load('../output/disk_002_dft.npz')
+    simulations_tot = np.stack(simulations_sep.values(), axis=0)
+    data_stack = simulations_tot.reshape(-1, 1, 50, 50)
+    # data_stack = torch.tensor(data_stack).float()
+    polarization_keys_sim = [float(k.split('_')[2]) for k in simulations_sep.keys()]
+    polarization_keys_sim = np.array(polarization_keys_sim)
+    p_mean = np.mean(polarization_keys_sim)
+    p_std = np.std(polarization_keys_sim)
+    polarization_keys_sim = (polarization_keys_sim - p_mean) / p_std
     # %%
-    prnet = conv_pVAE((50, 50), 5, 0)
-    prnet.set_encoder(encoder_net=encoder)
+
+
+    #%%
+    #%%
+    input_dim = data_stack.shape[-2:]
+    prnet = conv_pVAE(input_dim, latent_dim=5, conv_encoder=True, conv_decoder=True, translation=False, seed=0)
+    prnet.set_encoder(enet)
+    data_train, p_train, data_test, p_test = aoi.utils.data_split(data_stack, polarization_keys_sim, format_out="torch_float")
     # %%
-    prnet.fit(data_stack, epochs=100, batch_size=64)
-# %%
+    prnet.fit(X_train=data_train,X_test=data_test, 
+              y_train=p_train, y_test=p_test,
+              epochs=20, batch_size=64)
+    # %%
+
+    with torch.no_grad():
+        z_mean, z_logsd = prnet.encode(torch.tensor(data_stack).to(prnet.device))
+        p = prnet.fcn_net(torch.tensor(z_mean).to(prnet.device))
+
+    # %%
+    import matplotlib.pyplot as plt
+    plt.hist2d(polarization_keys_sim, p.cpu().detach().numpy(), bins=50)
+
+    # %%
+
+    data_post_exp = np.load('../output/set1_Ru_002.npy')
+
+    mean = np.mean(data_post_exp)
+    std = np.std(data_post_exp)
+    data_post_exp = (data_post_exp - mean) / std
+
+    data_stack = data_post_exp.reshape(-1, 1, data_post_exp.shape[-2], data_post_exp.shape[-1])
+
+    with torch.no_grad():
+        z_mean, z_logsd = prnet.encode(torch.tensor(data_stack).to(prnet.device))
+        exp_p = prnet.fcn_net(torch.tensor(z_mean).to(prnet.device))
+
+
+    # exp_p = rvae.compute_p(torch.tensor(data_stack4).to(rvae.device))
+    fig, ax = plt.subplots(1, 5, figsize=(5,5))
+    exp_p = exp_p * p_std + p_mean
+    exp_p = exp_p.cpu().detach().numpy()
+    exp_p = exp_p.reshape(data_post_exp.shape[:-2])
+    for i in range(5):
+        ax[i].imshow(exp_p[i], cmap='RdBu')
+
+    # %%

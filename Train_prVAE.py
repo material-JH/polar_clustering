@@ -51,37 +51,76 @@ simulations_tot = (simulations_tot - mean3) / std3
 imstack_train = np.concatenate((data_stack, simulations_tot), axis=0)
 imstack_train = np.concatenate((imstack_train, data_stack4), axis=0)
 imstack_train = normalize_Data(imstack_train)
+tmp = np.zeros((len(imstack_train), 64, 64))
+for i in range(len(imstack_train)):
+    tmp[i] = imutils.resize(imstack_train[i], 64, 64)
+#%%
+imstack_train = tmp
+
 # imstack_train = np.concatenate((imstack_train, simulations_tot), axis=0)
 imstack_polar = np.concatenate((polarization_keys_exp, polarization_keys_sim), axis=0)
 imstack_polar = np.concatenate((imstack_polar, polarization_keys_exp4), axis=0)
 # imstack_polar = np.concatenate((imstack_polar, polarization_keys_sim), axis=0)
 input_dim = imstack_train.shape[-2:]
 #%%
-filename = 'weights/prvae_002_norm_10_3'
+filename = 'weights/conv_pvae_002_norm_10'
 import gc
 gc.collect()
-rvae = prVAE(input_dim, latent_dim=10,
-                        numlayers_encoder=2, numhidden_encoder=256,
-                        numlayers_decoder=2, numhidden_decoder=256,
+pconv_vae = conv_pVAE(input_dim, latent_dim=10,
                         p_weight=1e+3,
                         include_reg=True, include_div=True, include_cont=True,
                         reg_weight=.1, div_weight=.1, cont_weight=10, filename=filename)
+
+enet = EncoderNet(1, 128, latent_dim=10)
+# dnet = DecoderNet(10, 128)
+pconv_vae.set_model(enet, dnet)
+
+
 #%%
 if os.path.exists(f'{filename}.tar'):
-    rvae.load_weights(f'{filename}.tar')
+    pconv_vae.load_weights(f'{filename}.tar')
     print('loaded weights')
 #%%
 ind_test = np.random.choice(range(len(imstack_train)), len(imstack_train) // 5, replace=False)
 ind_train = np.setdiff1d(range(len(imstack_train)), ind_test)
 
 #%%
-rvae.fit(
+pconv_vae.fit(
     X_train= imstack_train[ind_train],
     y_train= imstack_polar[ind_train],
     X_test = imstack_train[ind_test],
     y_test = imstack_polar[ind_test],
-    training_cycles=50,
+    training_cycles=30,
     batch_size=2 ** 7,
     filename=filename)
 
 #%%
+gc.collect()
+
+with torch.no_grad():
+    sim_resized = np.zeros((len(simulations_tot), 64, 64))
+    for i in range(len(simulations_tot)):
+        sim_resized[i] = imutils.resize(simulations_tot[i], 64, 64)
+    z_mean, z_logsd = pconv_vae.encode(torch.tensor(sim_resized[:,None,...]).float().to(pconv_vae.device))
+    p = pconv_vae.fcn_net(torch.tensor(z_mean).to(pconv_vae.device))
+
+# %%
+plt.hist2d(polarization_keys_sim, p.cpu().detach().numpy(), bins=50)
+# %%
+with torch.no_grad():
+    stack_resized = np.zeros((len(data_stack), 64, 64))
+    for i in range(len(data_stack)):
+        stack_resized[i] = imutils.resize(data_stack[i], 64, 64)
+    z_mean, z_logsd = pconv_vae.encode(torch.tensor(stack_resized[:,None]).float().to(pconv_vae.device))
+    exp_p = pconv_vae.fcn_net(torch.tensor(z_mean).to(pconv_vae.device))
+
+
+# exp_p = rvae.compute_p(torch.tensor(data_stack4).to(rvae.device))
+fig, ax = plt.subplots(1, 5, figsize=(5,5))
+exp_p = exp_p * p_std + p_mean
+exp_p = exp_p.cpu().detach().numpy()
+exp_p = exp_p.reshape(data_post_exp.shape[:-2])
+for i in range(5):
+    ax[i].imshow(exp_p[i], cmap='RdBu')
+
+# %%
