@@ -14,23 +14,17 @@ from atomai.losses_metrics import reconstruction_loss, kld_normal, kld_rot
 from typing import Callable, Optional, Tuple, Type, Union
 
 class regVAE(aoi.models.VAE):
-    def __init__(self, in_dim: int = None, latent_dim: int = 2, nb_classes: int = 0, seed: int = 0, **kwargs: int | bool | str) -> None:
+    def __init__(self, in_dim: int = None, latent_dim: int = 2, nb_classes: int = 0, seed: int = 0, **kwargs: int
+ | bool | str) -> None:
         super().__init__(in_dim, latent_dim, nb_classes, seed, **kwargs)
 
     def elbo_fn(self, x: Tensor, x_reconstr: Tensor, *args: Tensor, **kwargs) -> Tensor:
         return reg_loss(self.loss, self.in_dim, x, x_reconstr, *args, **kwargs)
 
 class regrVAE(aoi.models.rVAE):
-    
-    def __init__(self,
-                 in_dim: int = None,
-                 latent_dim: int = 2,
-                 nb_classes: int = 0,
-                 translation: bool = True,
-                 seed: int = 0,
-                 **kwargs: Union[int, bool, str]
-                 ) -> None:
-        super().__init__(in_dim, latent_dim, nb_classes, translation, seed, **kwargs)
+    def __init__(self, in_dim: int = None, latent_dim: int = 2, nb_classes: int = 0, seed: int = 0, **kwargs: int
+ | bool | str) -> None:
+        super().__init__(in_dim, latent_dim, nb_classes, seed, **kwargs)
 
     def elbo_fn(self, x: Tensor, x_reconstr: Tensor, *args: Tensor, **kwargs) -> Tensor:
         return reg_loss(self.loss, self.in_dim, x, x_reconstr, *args, **kwargs)
@@ -94,6 +88,7 @@ def reg_loss(recon_loss: str,
     #     kl_div = infocapacity(kl_div, capacity, num_iter=num_iter)
     return likelihood - kl_div
 
+
 def p_loss(y: torch.Tensor,
             p: torch.Tensor,
             **kwargs: Union[List[float], float]
@@ -107,13 +102,14 @@ def p_loss(y: torch.Tensor,
     return - p_mean * p_weight
 
 class prVAE(aoi.models.rVAE):
-    
+
     def __init__(self, in_dim: int = None, latent_dim: int = 2, nb_classes: int = 0, translation: bool = True, seed: int = 0, **kwargs: int | bool | str) -> None:
-        self.h_dim = 128
+        self.h_dim = 256
         self.p_losses = []
         super().__init__(in_dim, latent_dim, nb_classes, translation, seed, **kwargs)
 
-    def elbo_fn(self, x: torch.Tensor, x_reconstr: torch.Tensor, y: torch.Tensor, *args: torch.Tensor, **kwargs: Union[list, float, int]) -> torch.Tensor:
+    def elbo_fn(self, x: torch.Tensor, x_reconstr: torch.Tensor, y: torch.Tensor, *args: torch.Tensor, **kwargs:
+Union[list, float, int]) -> torch.Tensor:
         if len(args) == 2:
             z_mean, z_logsd = args
             p = self.fcn_net(z_mean)
@@ -126,7 +122,7 @@ class prVAE(aoi.models.rVAE):
                              y: Optional[torch.Tensor] = None,
                              mode: str = "train"
                              ) -> torch.Tensor:
-        
+
         """
         rVAE's forward pass with training/test loss computation
         """
@@ -157,17 +153,6 @@ class prVAE(aoi.models.rVAE):
 
         return self.elbo_fn(x, x_reconstr, y, z_mean, z_logsd, **self.kdict_)
 
-    def pred_p(self, x: torch.Tensor | np.ndarray):
-        if isinstance(x, np.ndarray):
-            x = torch.from_numpy(x).float()
-        if len(x.shape) == 3:
-            x = x.unsqueeze(-1)
-        x = x.to(self.device)
-        with torch.no_grad():
-            z_mean, z_logsd = self.encode(x)
-            p = self.fcn_net(torch.tensor(z_mean).to(self.device))
-        return p
-    
     def _check_inputs(self, X_train: np.ndarray, y_train: np.ndarray | None = None, X_test: np.ndarray | None = None, y_test: np.ndarray | None = None) -> None:
         pass
 
@@ -200,14 +185,21 @@ class prVAE(aoi.models.rVAE):
             y = torch.from_numpy(y).float()
         return X, y
 
+    def compute_p(self, x: torch.Tensor):
+        with torch.no_grad():
+            z_mean, z_logsd = self.encoder_net(x)
+            p = self.fcn_net(z_mean)
+        return p
+
 class prVAE2(aoi.models.rVAE):
-    
+
     def __init__(self, in_dim: int = None, latent_dim: int = 2, nb_classes: int = 0, translation: bool = True, seed: int = 0, **kwargs: int | bool | str) -> None:
         self.h_dim = 256
         self.p_losses = []
         super().__init__(in_dim, latent_dim, nb_classes, translation, seed, **kwargs)
 
-    def elbo_fn(self, x: torch.Tensor, x_reconstr: torch.Tensor, *args: torch.Tensor, **kwargs: Union[list, float, int]) -> torch.Tensor:
+    def elbo_fn(self, x: torch.Tensor, x_reconstr: torch.Tensor, *args: torch.Tensor, **kwargs: Union[list, float
+, int]) -> torch.Tensor:
         return reg_loss(self.loss, self.in_dim, x, x_reconstr, *args, **kwargs)
 
     def forward_compute_elbo(self,
@@ -215,7 +207,7 @@ class prVAE2(aoi.models.rVAE):
                              y: Optional[torch.Tensor] = None,
                              mode: str = "train"
                              ) -> torch.Tensor:
-        
+
         """
         rVAE's forward pass with training/test loss computation
         """
@@ -304,14 +296,14 @@ class prVAE2(aoi.models.rVAE):
             for item in self.p_losses:
                 f.write("%s\n" % item)
 
-class conv_pVAE(aoi.models.rVAE):
-    
+class conv_pVAE(aoi.models.VAE):
+
     def __init__(self, in_dim: int = None, latent_dim: int = 2, nb_classes: int = 0, seed: int = 0, **kwargs: int | bool | str) -> None:
         self.h_dim = kwargs.get("numhidden_encoder", 256)
         self.p_losses = []
         super().__init__(in_dim, latent_dim, nb_classes, seed, **kwargs)
 
-    def elbo_fn(self, x: torch.Tensor, x_reconstr: torch.Tensor, y: torch.Tensor, *args: torch.Tensor, **kwargs: Union[list, float, int]) -> torch.Tensor:
+    def elbo_fn(self, x: torch.Tensor, x_reconstr: torch.Tensor, y: torch.Tensor, *args: torch.Tensor, **kwargs:Union[list, float, int]) -> torch.Tensor:
         if y is not None:
             z_mean, z_logsd = args
             p = self.fcn_net(z_mean)
@@ -330,6 +322,8 @@ class conv_pVAE(aoi.models.rVAE):
         VAE's forward pass with training/test loss computation
         """
         x = x.to(self.device)
+        if len(x.shape) == 3:
+            x = x[:,None,...]
         if mode == "eval":
             with torch.no_grad():
                 z_mean, z_logsd = self.encoder_net(x)
@@ -406,7 +400,7 @@ class fcnNet(nn.Module):
         return self.net(x)[:,0]
 
 class EncoderNet(nn.Module):
-    def __init__(self, input_channel, hidden_channel, kernel_size=3, stride=1, padding=1, latent_dim: int = 2, *args, **kwargs) -> None:
+    def __init__(self, input_channel, hidden_channel, kernel_size=5, stride=1, padding=2, latent_dim: int = 2, *args, **kwargs) -> None:
         super().__init__()
 
         self.encoder = nn.Sequential(
@@ -439,14 +433,14 @@ class EncoderNet(nn.Module):
         self._out = nn.Softplus() if kwargs.get("softplus_out") else lambda x: x
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
-        x = x.unsqueeze(1) if x.ndim in (2, 3) else x.permute(0, -1, 1, 2)
         x = self.encoder(x).squeeze()
         z_mu = self.fc11(x)
         z_logstd = self._out(self.fc12(x))
         return z_mu, z_logstd
 
 class DecoderNet(nn.Module):
-    def __init__(self, latent_dim: int = 2, hidden_channel=64, output_channel=1, kernel_size=2, stride=2, *args, **kwargs) -> None:
+    def __init__(self, latent_dim: int = 2, hidden_channel=64, output_channel=1, kernel_size=2, stride=2, *args,
+**kwargs) -> None:
         super().__init__(*args, **kwargs)
         self.decoder = nn.Sequential(
             nn.ConvTranspose2d(latent_dim, hidden_channel, kernel_size=kernel_size, stride=stride),
@@ -466,7 +460,7 @@ class DecoderNet(nn.Module):
             nn.LeakyReLU(),
             nn.ConvTranspose2d(hidden_channel, output_channel, kernel_size=kernel_size, stride=stride),
             )
-    
+
     def forward(self, z):
         z = z.unsqueeze(-1).unsqueeze(-1)
         z = self.decoder(z)
@@ -497,9 +491,9 @@ class NN(nn.Module):
         self.bn3 = nn.BatchNorm2d(64)
         self.cnn4 = nn.Conv2d(64,64,kernel_size=5)
         self.act = nn.Softplus()
-        
+
         self.fc = nn.Linear(64, 1)
-        
+
     def forward(self, x):
         x = self.cnn1(x)
         x = self.bn1(x)
@@ -516,7 +510,7 @@ class NN(nn.Module):
         y = self.fc(x)
         y = y[:,0]
         return y
-    
+
 class CNN1(nn.Module):
     def __init__(self):
         super(CNN1, self).__init__()
@@ -533,9 +527,9 @@ class CNN1(nn.Module):
         self.bn3 = nn.BatchNorm1d(128)
         self.cnn4 = nn.Conv1d(128,256,kernel_size=3)
         self.act = nn.LeakyReLU()
-        
+
         self.fc2 = nn.Linear(256, 1)
-        
+
     def forward(self, x):
         # x = self.fc1(x)
         # x = self.act(x)
@@ -557,7 +551,7 @@ class CNN1(nn.Module):
         y = self.fc2(x)
         y = y[:,0]
         return y
-    
+
 class FNN(nn.Module):
     def __init__(self):
         super(FNN, self).__init__()
@@ -589,7 +583,7 @@ class testnet(nn.Module):
             nn.ConvTranspose2d(2, 128, kernel_size=2, stride=2),
             nn.BatchNorm2d(128),
         )
-    
+
     def forward(self, x):
         return self.net(x)
 
@@ -598,7 +592,7 @@ if __name__ == "__main__":
     print(tnet(torch.randn(3, 2, 1, 1)).shape)
     #%%
     enet = EncoderNet(1, 64, latent_dim=5)
-    print(enet(torch.randn(3, 1, 64, 64))[0].shape)    
+    print(enet(torch.randn(3, 1, 64, 64))[0].shape)
 
     dnet = DecoderNet()
     print(dnet(torch.randn(10, 2)).shape)
@@ -622,7 +616,7 @@ if __name__ == "__main__":
     prnet.set_encoder(enet)
     data_train, p_train, data_test, p_test = aoi.utils.data_split(data_stack, polarization_keys_sim, format_out="torch_float")
     # %%
-    prnet.fit(X_train=data_train,X_test=data_test, 
+    prnet.fit(X_train=data_train,X_test=data_test,
               y_train=p_train, y_test=p_test,
               epochs=20, batch_size=64)
     # %%

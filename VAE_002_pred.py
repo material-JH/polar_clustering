@@ -4,6 +4,7 @@ import matplotlib.pyplot as plt
 from lib.main import *
 import atomai as aoi
 from model.model import *
+from lib.plot import *
 #%%
 data_post_exp = np.load('output/set1_Ru_002.npy')
 data_post_exp = np.concatenate((data_post_exp, np.load('output/set1_Ru_m002.npy')), axis=0)
@@ -40,17 +41,19 @@ imstack_train = np.concatenate((data_stack, simulations_tot), axis=0)
 input_dim = imstack_train.shape[1:]
 
 #%%
-rvae = regrVAE(input_dim, latent_dim=4,
+filename = 'weights/regrvae_002_norm_47.tar'
+rvae = regrVAE(input_dim, latent_dim=10,
                         numlayers_encoder=2, numhidden_encoder=256,
                         numlayers_decoder=2, numhidden_decoder=256,
                         include_reg=True, include_div=True, include_cont=True,
-                        reg_weight=1, div_weight=1, cont_weight=1,)
+                        reg_weight=.1, div_weight=.1, cont_weight=10, filename=filename)
 #%%
 
-
-if os.path.exists('weights/regrvae_002_norm_47_256.tar'):
-    rvae.load_weights('weights/regrvae_002_norm_47_256.tar')
+if os.path.exists(filename):
+    rvae.load_weights(filename)
     print('loaded weights')
+#%%
+
 # %%
 encoded_mean, _ = rvae.encode(data_stack)
 z11, z12, z13 = encoded_mean[:,0], encoded_mean[:, 1:3], encoded_mean[:, 3:]
@@ -61,10 +64,12 @@ z21, z22, z23 = encoded_mean2[:,0], encoded_mean2[:, 1:3], encoded_mean2[:, 3:]
 sim_mean, sim_sd = rvae.encode(simulations_tot)
 z31, z32, z33 = sim_mean[:,0], sim_mean[:, 1:3], sim_mean[:, 3:]
 #%%
-fig, ax = plt.subplots(1, 5, figsize=(15, 10))
-for i, img in enumerate(z13[:1900,0].reshape(5, 38, 10)):
-    ax[i].imshow(img, cmap='RdBu')
-    ax[i].axis('off')
+for j in range(10):
+    fig, ax = plt.subplots(1, 5, figsize=(15, 10))
+    for i, img in enumerate(z13[:1900,j].reshape(5, 38, 10)):
+        ax[i].imshow(img, cmap='RdBu')
+        ax[i].axis('off')
+    plt.show()
 #%%
 
 output = {}

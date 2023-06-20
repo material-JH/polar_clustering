@@ -42,28 +42,23 @@ input_dim = imstack_train.shape[1:]
 
 #%%
 filename = 'weights/rvae_002_norm_47.tar'
-rvae = regrVAE(input_dim, latent_dim=10,
-                        numlayers_encoder=2, numhidden_encoder=256,
-                        numlayers_decoder=2, numhidden_decoder=256,
+rvae = regrVAE(input_dim, latent_dim=10,translation=True,
+                        numlayers_encoder=2, numhidden_encoder=128,
+                        numlayers_decoder=2, numhidden_decoder=128,
                         include_reg=True, include_div=True, include_cont=True,
                         reg_weight=.1, div_weight=.1, cont_weight=10, filename=filename)
 #%%
 
-
-if os.path.exists('weights/regrvae_002_norm_47_256.tar'):
-    rvae.load_weights('weights/regrvae_002_norm_47_256.tar')
+if os.path.exists(filename):
+    rvae.load_weights(filename)
     print('loaded weights')
 #%%
-rvae.save_model('models/rvae_002_norm_47')
+rvae.save_model(filename.replace('weights/', 'models/'))
 #%%
-rvae = aoi.load_model('models/rvae_002_norm_47.tar')
-#%%
+rvae = aoi.load_model(filename.replace('weights/', 'models/'))
 #%%
 ind_test = np.random.choice(range(len(imstack_train)), len(imstack_train) // 5, replace=False)
 ind_train = np.setdiff1d(range(len(imstack_train)), ind_test)
-
-#%%
-rvae.manifold2d()
 
 #%%
 rvae.fit(
@@ -71,7 +66,7 @@ rvae.fit(
     X_test = imstack_train[ind_test],
     training_cycles=50,
     batch_size=2 ** 8,
-    filename='weights/regrvae_002_norm_47_256')
+    filename=filename)
 
 #%%
 rvae.fit(

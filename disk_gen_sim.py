@@ -12,7 +12,7 @@ arr = []
 fnames = []
 
 circle = get_circle_conv(45)
-for file in tqdm(glob('output/dft/*.npy')[:9]):
+for file in tqdm(np.random.choice(glob('output/dft/*.npy'), 10)):
     arr.append(np.load(file).astype(np.float16))
     file = file.rsplit('/', 1)[-1]
     fnames.append(file[:-4])
@@ -30,7 +30,8 @@ rad = 50
 #%%
 plt.imshow(arr[0])
 #%%
-plt.imshow(crop(arr[0], rad, disk_m011))
+plt.imshow(crop(arr[6], rad, disk_002), vmax=1e-4)
+plt.axis('off')
 #%%
 
 plot_tk(arr)

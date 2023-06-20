@@ -3,15 +3,17 @@ import imutils
 import sys
 import numpy as np
 import matplotlib.pyplot as plt
+
+sys.path.append("../")
 from lib.main import *
 import atomai as aoi
 from model.model_pnu import *
 #%%
-data_post_exp = np.load('output/set1_Ru_002.npy')
+data_post_exp = np.load('../output/set1_Ru_002.npy')
 
 # data_post_exp2 = np.load('output/set2_Ru_002.npy')
 # data_post_exp3 = np.load('output/set3_SRO_002.npy')
-data_post_exp4 = np.load('output/set4_SRO_002.npy')
+data_post_exp4 = np.load('../output/set4_SRO_002.npy')
 
 #%%
 
@@ -31,9 +33,9 @@ polarization_keys_exp = [torch.inf for _ in range(len(data_stack))]
 polarization_keys_exp4 = [torch.inf for _ in range(len(data_stack4))]
 
 #%%
-simulations_sep = np.load('output/disk_002_dft.npz')
-simulations_sepm = np.load('output/disk_m002_dft.npz')
-simulations_tot = np.stack(simulations_sep.values(), axis=0)
+simulations_sep = np.load('../output/disk_002_dft.npz')
+# simulations_sepm = np.load('output/disk_m002_dft.npz')
+# simulations_tot = np.stack(simulations_sep.values(), axis=0)
 # simulations_tot = np.stack((simulations_tot, np.stack(simulations_sepm.values(), axis=0)), axis=-3)
 #%%
 polarization_keys_sim = [float(k.split('_')[2]) for k in simulations_sep.keys()]
@@ -64,10 +66,10 @@ imstack_polar = np.concatenate((imstack_polar, polarization_keys_exp4), axis=0)
 
 input_dim = imstack_train.shape[1:]
 #%%
-filename = 'weights/conv_prvae_002_norm_10'
+filename = '../weights/conv_prvae_002_norm_10'
 import gc
 gc.collect()
-pconv_vae = prVAE(input_dim, latent_dim=10,
+pconv_vae = prVAE((64, 64, 1), latent_dim=10,
                         p_weight=1e+3,
                         include_reg=True, include_div=True, include_cont=True,
                         reg_weight=.1, div_weight=.1, cont_weight=10, filename=filename)
@@ -97,9 +99,9 @@ with torch.no_grad():
 plt.hist2d(polarization_keys_sim, p.cpu().detach().numpy(), bins=50)
 # %%
 with torch.no_grad():
-    tmp = np.zeros((len(data_stack), 64, 64))
-    for i in range(len(data_stack)):
-        tmp[i] = imutils.resize(data_stack[i], 64, 64)
+    tmp = np.zeros((len(data_stack4), 64, 64))
+    for i in range(len(data_stack4)):
+        tmp[i] = imutils.resize(data_stack4[i], 64, 64)
 
     z_mean, z_logsd = pconv_vae.encode(torch.tensor(tmp).float().unsqueeze(1).to(pconv_vae.device))
     exp_p = pconv_vae.fcn_net(torch.tensor(z_mean).to(pconv_vae.device))
