@@ -559,16 +559,16 @@ class CNN1(nn.Module):
         return y
     
 class FNN(nn.Module):
-    def __init__(self):
+    def __init__(self, in_dim, h_dim=96):
         super(FNN, self).__init__()
         # 50*50
 
-        self.fc1 = nn.Linear(18, 96)
-        self.fc2 = nn.Linear(96,96)
-        self.fc3 = nn.Linear(96, 1)
+        self.fc1 = nn.Linear(in_dim, h_dim)
+        self.fc2 = nn.Linear(h_dim,h_dim)
+        self.fc3 = nn.Linear(h_dim, 1)
         self.act = nn.LeakyReLU()
-        self.bn1 = nn.BatchNorm1d(96)
-        self.bn2 = nn.BatchNorm1d(96)
+        self.bn1 = nn.BatchNorm1d(h_dim)
+        self.bn2 = nn.BatchNorm1d(h_dim)
 
 
     def forward(self, x):

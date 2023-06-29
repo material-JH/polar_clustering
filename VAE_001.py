@@ -50,7 +50,7 @@ rvae = regrVAE(input_dim, latent_dim=10,translation=True,
 #%%
 
 if os.path.exists(filename):
-    rvae.load_weights(filename)
+    rvae.load_weights('weights_pnu/rvae_002_norm_47.tar')
     print('loaded weights')
 #%%
 rvae.save_model(filename.replace('weights/', 'models/'))
@@ -64,8 +64,8 @@ ind_train = np.setdiff1d(range(len(imstack_train)), ind_test)
 rvae.fit(
     X_train= imstack_train[ind_train],
     X_test = imstack_train[ind_test],
-    training_cycles=50,
-    batch_size=2 ** 8,
+    training_cycles=20,
+    batch_size=2 ** 7,
     filename=filename)
 
 #%%

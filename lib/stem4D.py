@@ -68,8 +68,8 @@ class Stem:
 
         self.gridscan = GridScan(start=[self.potential.extent[0]/2 - scan_width[0] / 2, 
                                         self.potential.extent[1]/2 - scan_width[0] / 2],
-                    end=[self.potential.extent[0]/2 + scan_width[0] / 2, 
-                         self.potential.extent[1]/2 + scan_width[0] / 2],
+                    end=[self.potential.extent[0]/2 + scan_width[1] / 2, 
+                         self.potential.extent[1]/2 + scan_width[1] / 2],
                     gpts=gpts)
 
         self.detector = PixelatedDetector(max_angle=angle, resample=False)

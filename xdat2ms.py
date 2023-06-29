@@ -164,3 +164,35 @@ for filename in tqdm(os.listdir(directory)):
         new_filename = '_'.join(tmp) + '.npy'
         # Rename the file
         os.rename(os.path.join(directory, filename), os.path.join(directory, new_filename))
+
+#%%
+
+stem = Stem('gpu')
+N = 2 ** 10
+#%%
+from ase.io import read
+atoms = read('/mnt/e/hfo2/Pbca.vasp')
+# atoms.cell[2, 1] = 0
+#%%
+
+from abtem.structures import orthogonalize_cell
+
+atoms = orthogonalize_cell(atoms)
+#%%
+stem.set_atom(atoms)
+stem.generate_pot(N // 2 ** 4, 3.91)
+
+stem.potential = stem.potential.tile([20,20, 10])
+# %%
+stem.set_probe(gaussian_spread=0, defocus=10, tilt=(0,-0), semiangle_cutoff=10)
+stem.set_scan_gpts([2, 2], (1, 1))
+measurement = stem.scan(batch_size=32)
+measurement.array = measurement.array.astype(np.float32)
+new_size = min(int(N * measurement.calibrations[2].sampling / measurement.calibrations[3].sampling),
+            int(N * measurement.calibrations[3].sampling / measurement.calibrations[2].sampling))
+test = squaring(measurement, [1,1], new_size, N)
+
+measurement_np = crop_center(test, [55 * 3, 55 * 3])
+plt.imshow(np.sqrt(measurement_np[0,0]))
+plt.axis('off')
+# %%

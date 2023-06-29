@@ -98,14 +98,14 @@ class AverageMeter(object):
 # if __name__ == '__main__':
 ################################ Input ####################################
 # data
-data_path='output/z3.npz'
+data_path='output_pnu/z3.npz'
 TrainValTeSplitst = [0.8, 0.1, 0.1]
 # Model 
 
 # Training
-batch_size = 2 ** 7
-lr = 0.0003
-epochs = 500
+batch_size = 2 ** 8
+lr = 0.0004
+epochs = 1000
 cuda = True
 seed = 1234
 ###########################################################################
@@ -146,7 +146,7 @@ json.dump([train_idx,val_idx,test_idx],open('split.json','w'))
 #build model
 
 # model = CNN1()
-model = FNN()
+model = FNN(data.Xs.shape[1], h_dim=256)
 if cuda:
     if torch.cuda.device_count() > 1:
         model = nn.DataParallel(model,device_ids=[0])

@@ -20,3 +20,4 @@ gpaws/*
 weights/*
 weights_pnu/*
 models/*
+*.tar

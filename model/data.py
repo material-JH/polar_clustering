@@ -173,7 +173,7 @@ class DataZFlatten(Dataset):
             self.raw_Ys = Ys
 
         Xs = np.array(Xs)
-        Xs = Xs.reshape(-1, 2 * 9)
+        Xs = Xs.reshape(Xs.shape[0], -1)
         self.raw_Xs = Xs
         
     def normalize(self,train_idxs):

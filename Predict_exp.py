@@ -68,8 +68,8 @@ class AverageMeter(object):
         self.avg = self.sum / self.count
 
 if __name__ == '__main__':
-    data_path_sim='output/z3.npz'
-    data_path_exp='output/z1.npy'
+    data_path_sim='output_pnu/z3.npz'
+    data_path_exp='output_pnu/z2.npy'
 
     # Best Hyperparameters
     #var. for dataset loader
@@ -81,7 +81,7 @@ if __name__ == '__main__':
     print('loading data...',end=''); t = time()
     # data = DataExp(data_path)
 
-    norm_params = json.load(open('norm_params.json','r'))
+    norm_params = json.load(open('weights_pnu/norm_params.json','r'))
 
     
     data_exp = DataZFlatten(data_path_exp)
@@ -92,14 +92,14 @@ if __name__ == '__main__':
     loader = get_loader(data_exp,batch_size=batch_size,idx_sets=[list(range(len(data_exp)))])[0]
     #build model
     # model = CNN1()
-    model = FNN()
+    model = FNN(data_exp.raw_Xs.shape[-1], h_dim=256)
     if cuda:
         if torch.cuda.device_count() > 1:
             model = nn.DataParallel(model)
         model.cuda()
     os.makedirs('predict',exist_ok=True)
     outputs = []
-    model.load_state_dict(torch.load('weights/W.pth.tar'))
+    model.load_state_dict(torch.load('weights_pnu/W.pth.tar'))
     output = use_model(loader,model,0)
     # output = data_sim.revert_normalize(output)
     # output = data.revert_normalize(output)
@@ -108,37 +108,40 @@ if __name__ == '__main__':
     # json.dump([mpids,outputs,target,std],open('predict/Perov_All.json','w'))
 output = data_sim.revert_normalize(output)
 #%%
-
-z1_10 = data_exp.raw_Xs[:,17].reshape(5, 38, 10)
-z1_0 = data_exp.raw_Xs[:,0].reshape(5, 38, 10)
-
-for n in range(5):
-    trueth = z1_0[n] < 0.5
-    trueth = trueth.astype(int)
-    trueth = trueth + (z1_10[n] > 0.5).astype(int)
-    trueth = trueth.astype(bool)
-    trueth = trueth.T
-    plt.imshow((trueth), cmap='gray_r', alpha=.5)
-    plt.show()
-
-#%%
-fig, ax = plt.subplots(3,1)
+fig, ax = plt.subplots(1,4, figsize=(6, 5))
 # vmax = np.max(output)
 # vmin = np.min(output)
-vmax = .13 
-vmin = -.13
+vmax = .15
+vmin = -.15
 # output[lbl==0] = 0
 output_reshape = np.reshape(output, (5, 38, 10))
 z1_10 = data_exp.raw_Xs[:,-8].reshape(5, 38, 10)
 z1_0 = data_exp.raw_Xs[:,0].reshape(5, 38, 10)
-for n, img in enumerate(output_reshape):
+ylim = np.array([34, 1])
+for n, img in enumerate(output_reshape[::-1]):
+    # zero_img = np.zeros_like(img)
+    # zero_img[np.logical_and(-0.01 < img,  img < 0.01)] = 1
+    # print(img.min(), img.max())
     if n % 2 == 1:
         continue
     n = n // 2
 
-
+    xs_q, ys_q = np.meshgrid(np.linspace(0, 9, 10), np.linspace(0, 37, 38) )
+    xs_q_grad = np.zeros_like(xs_q)
+    ys_q_grad = img * -1
     # pcm = ax[n].imshow(img, cmap='RdBu', interpolation='bessel',vmin=vmin,vmax=vmax)
-    pcm = ax[n].imshow(img.T, cmap='RdBu_r',vmin=vmin,vmax=vmax, alpha=.6, aspect='auto', interpolation='bicubic')
+    # pcm = ax[n].imshow(img, cmap='RdBu_r',vmin=vmin,vmax=vmax, alpha=0.6, aspect='auto', interpolation='bicubic')
+    ax[n].contourf(img, alpha=0.6, cmap='RdBu_r', vmin=vmin, vmax=vmax, levels=50)
+    ax[n].quiver(xs_q, ys_q, xs_q_grad, ys_q_grad, width=0.02, scale=0.6, color='k', alpha=0.5)
+    ax[n].set_ylim(*ylim)
+    if n == 0:
+        ylim -= 1
+        ax[n].set_ylim(*ylim)
+        ylim += 1
+        # ax[n].set_ylim(-2, 38 - 2)
+    # if n == 4:
+    #     plt.colorbar(pcm, ax=ax[n], ticks=[vmin, 0, vmax])
+    # ax[n].imshow(zero_img, cmap='gray_r')
 
     trueth = z1_0[n] < 0.5
     trueth = trueth.astype(int)
@@ -146,13 +149,29 @@ for n, img in enumerate(output_reshape):
     trueth = trueth.astype(bool)
     trueth = trueth.T
     # ax[n].imshow((trueth), cmap='gray_r', alpha=trueth * .5, aspect='auto')
-    ax[n].axis('off')
-    ax2 = ax[n].twinx()
-    ax2.plot(np.mean(img, axis=1) * -100, c='k')
-    ax2.set_ylim(-13, 13)
-    # ax2.tick_params(labelbottom=False)
-    ax2.plot(range(38), np.zeros(38), c='k', alpha=.5, linestyle='--')
-    ax2.set_ylabel(f'disp. (pm)\n\n{n - 2}V')
+    ax[n].set_xticks([])
+    ax[n].set_yticks([])
+    # ax2 = ax[n].twiny()
+    # ax2.plot(np.mean(img, axis=1) * -100, range(38), c='k')
+    # ax2.set_xlim(vmin * 100, vmax * 100)
+    # # ax2.tick_params(labelbottom=False)
+    # ax2.plot(np.zeros(38), range(38), c='k', alpha=.5, linestyle='--')
+    # ax2.set_xlabel(f'disp. (pm)\n\n{n - 2}V')
+    x = range(38)
+    if n == 0:
+        x = range(1, 39)
+        c = 'b'
+    elif n == 1:
+        c = 'gray'
+    elif n == 2:
+        c = 'r'
+    ax[-1].plot(np.mean(img, axis=1) * -100, x, c=c, alpha=.5)
+
+ax[-1].set_xlim(vmin * 100, vmax * 100)
+ax[-1].set_ylim(*ylim)
+# ax[-1].set_ylim(38, 0)
+ax[-1].set_xticks([-10, 0, 10])
+ax[-1].set_yticks([])
 # ax[-1].axis('off')
 # fig.colorbar(pcm, ax=ax[-1])
 plt.show()

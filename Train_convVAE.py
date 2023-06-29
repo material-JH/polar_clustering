@@ -12,6 +12,9 @@ data_post_exp = np.load('output/set1_Ru_002.npy')
 # data_post_exp2 = np.load('output/set2_Ru_002.npy')
 # data_post_exp3 = np.load('output/set3_SRO_002.npy')
 data_post_exp4 = np.load('output/set4_SRO_002.npy')
+#%%
+
+plt.imshow(data_post_exp4[2].sum(axis=(-1, -2)))
 
 #%%
 
