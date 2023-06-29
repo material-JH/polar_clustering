@@ -116,12 +116,52 @@ imgs = p_plot.reshape(5, 38, 10)
 pmin = -0.03
 pmax = 0.03
 fig, ax = plt.subplots(1, 6)
-for i in range(6):
-    if i == 5:
-        plt.colorbar(pcm, ax=ax[i], aspect=30)
+for n in range(6):
+    if n == 5:
+        plt.colorbar(pcm, ax=ax[n], aspect=30)
         # ax[i].axis('off')
     else:
-        pcm = ax[i].contourf(imgs[i, ...], cmap='RdBu', vmin=pmin, vmax=pmax, levels=50)
-        ax[i].set_ylim(38, 0)
+        pcm = ax[n].contourf(imgs[n, ...], cmap='RdBu', vmin=pmin, vmax=pmax, levels=50)
+        ax[n].set_ylim(38, 0)
         # ax[i].axis('off')
+# %%
+data_post_exp = np.load('output/set1_Ru_002.npy')
+data_post_expm = np.load('output/set1_Ru_m002.npy')
+imgs = data_post_exp.sum(axis=(-1, -2))
+imgs2 = data_post_expm.sum(axis=(-1, -2))
+vmin = min(imgs.min(), imgs2.min())
+vmax = max(imgs.max(), imgs2.max())
+
+fig, ax = plt.subplots(1,4, figsize=(6, 5))
+ylim = np.array([34, 0])
+for n, img in enumerate(imgs2):
+    if n % 2 == 1:
+        continue
+    n = n // 2
+    ax[n].contourf(img, alpha=0.6, cmap='Reds', vmin=vmin, vmax=vmax, levels=50)
+    ax[n].set_ylim(*ylim)
+    if n == 0:
+        ylim += 2
+        ax[n].set_ylim(*ylim)
+        ylim -= 2
+    if n == 1:
+        ylim += 1
+        ax[n].set_ylim(*ylim)
+        ylim -= 1
+    ax[n].set_xticks([])
+    ax[n].set_yticks([])
+    x = range(38)
+    if n == 0:
+        x = range(0 - 2, 38 - 2)
+        c = 'b'
+    elif n == 1:
+        x = range(0 - 1, 38 - 1)
+        c = 'gray'
+    elif n == 2:
+        c = 'r'
+    ax[-1].plot(np.mean(img, axis=1), x, c=c, alpha=.5)
+    ax[-1].set_xlim(vmin, vmax)
+    ax[-1].set_ylim(*ylim)
+    ax[-1].set_xticks([])
+    ax[-1].set_yticks([])
 # %%

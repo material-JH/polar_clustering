@@ -69,7 +69,7 @@ class AverageMeter(object):
 
 if __name__ == '__main__':
     data_path_sim='output_pnu/z3.npz'
-    data_path_exp='output_pnu/z2.npy'
+    data_path_exp='output_pnu/z1.npy'
 
     # Best Hyperparameters
     #var. for dataset loader
@@ -176,33 +176,71 @@ ax[-1].set_yticks([])
 # fig.colorbar(pcm, ax=ax[-1])
 plt.show()
 #%%
-lbl = np.load('output/z2_all_cluster.npy')
-lbl = lbl.reshape(5, 38, 10)
-lbl = lbl[::2, :, :]
-fig, ax = plt.subplots(1,3)
-for n, img in enumerate(lbl):
-    pcm = ax[n].imshow(img, cmap='gray')
-    ax[n].axis('off')
+fig, ax = plt.subplots(1,4, figsize=(6, 5))
+# vmax = np.max(output)
+# vmin = np.min(output)
+vmax = .15
+vmin = -.15
+# output[lbl==0] = 0
 #%%
-fig, ax = plt.subplots(5,1, figsize=(5, 10))
-for n, img in enumerate(output_reshape):
-    ax[n].plot(np.mean(img, axis=1))
-    ax[n].tick_params(labelbottom=False)
-    ax[n].set_ylim(vmin, vmax)
+output_reshape = np.reshape(output, (5, 38, 10))
+z1_10 = data_exp.raw_Xs[:,-8].reshape(5, 38, 10)
+z1_0 = data_exp.raw_Xs[:,0].reshape(5, 38, 10)
+ylim = np.array([34, 1])
+for n, img in enumerate(output_reshape[::-1]):
+    # zero_img = np.zeros_like(img)
+    # zero_img[np.logical_and(-0.01 < img,  img < 0.01)] = 1
+    # print(img.min(), img.max())
+    if n % 2 == 1:
+        continue
+    n = n // 2
 
-    # ax[n].axis('off')
+    xs_q, ys_q = np.meshgrid(np.linspace(0, 9, 10), np.linspace(0, 37, 38) )
+    xs_q_grad = np.zeros_like(xs_q)
+    ys_q_grad = img * -1
+    # pcm = ax[n].imshow(img, cmap='RdBu', interpolation='bessel',vmin=vmin,vmax=vmax)
+    # pcm = ax[n].imshow(img, cmap='RdBu_r',vmin=vmin,vmax=vmax, alpha=0.6, aspect='auto', interpolation='bicubic')
+    ax[n].contourf(img, alpha=0.6, cmap='RdBu_r', vmin=vmin, vmax=vmax, levels=50)
+    ax[n].quiver(xs_q, ys_q, xs_q_grad, ys_q_grad, width=0.02, scale=0.6, color='k', alpha=0.5)
+    ax[n].set_ylim(*ylim)
+    if n == 0:
+        ylim -= 1
+        ax[n].set_ylim(*ylim)
+        ylim += 1
+        # ax[n].set_ylim(-2, 38 - 2)
+    # if n == 4:
+    #     plt.colorbar(pcm, ax=ax[n], ticks=[vmin, 0, vmax])
+    # ax[n].imshow(zero_img, cmap='gray_r')
 
+    trueth = z1_0[n] < 0.5
+    trueth = trueth.astype(int)
+    trueth = trueth + (z1_10[n] > 0.5).astype(int)
+    trueth = trueth.astype(bool)
+    trueth = trueth.T
+    # ax[n].imshow((trueth), cmap='gray_r', alpha=trueth * .5, aspect='auto')
+    ax[n].set_xticks([])
+    ax[n].set_yticks([])
+    # ax2 = ax[n].twiny()
+    # ax2.plot(np.mean(img, axis=1) * -100, range(38), c='k')
+    # ax2.set_xlim(vmin * 100, vmax * 100)
+    # # ax2.tick_params(labelbottom=False)
+    # ax2.plot(np.zeros(38), range(38), c='k', alpha=.5, linestyle='--')
+    # ax2.set_xlabel(f'disp. (pm)\n\n{n - 2}V')
+    x = range(38)
+    if n == 0:
+        x = range(1, 39)
+        c = 'b'
+    elif n == 1:
+        c = 'gray'
+    elif n == 2:
+        c = 'r'
+    ax[-1].plot(np.mean(img, axis=1) * -100, x, c=c, alpha=.5)
+
+ax[-1].set_xlim(vmin * 100, vmax * 100)
+ax[-1].set_ylim(*ylim)
+# ax[-1].set_ylim(38, 0)
+ax[-1].set_xticks([-10, 0, 10])
+ax[-1].set_yticks([])
+# ax[-1].axis('off')
+# fig.colorbar(pcm, ax=ax[-1])
 plt.show()
-#%%
-for n, img in enumerate(output_reshape):
-    np.savetxt(f'output/z1_disp{n}.dat', np.mean(img, axis=1))
-
-# %%
-
-z13 = data_exp.raw_Xs[:,0,4].reshape(5, 38, 10)
-
-fig, ax = plt.subplots(1,5)
-for n, img in enumerate(z13):
-    ax[n].imshow(img, cmap='RdBu', interpolation='nearest')
-    ax[n].axis('off')
-# %%

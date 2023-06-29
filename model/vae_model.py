@@ -1,4 +1,5 @@
 #%%
+from copy import deepcopy
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
@@ -699,6 +700,110 @@ class MMD_regpVAE(aoi.models.VAE):
         self.encoder_net = encoder_net
         self.decoder_net = decoder_net
         in_dim = self.z_dim
+        # in_dim = self.z_dim - 3 if self.translation else self.z_dim - 2
+        self.fcl_net = FCLNet(in_dim, self.h_dim)
+        self.encoder_net.to(self.device)
+        self.decoder_net.to(self.device)
+        self.fcl_net.to(self.device)
+
+    def _2torch(self,
+                X: Union[np.ndarray, torch.Tensor],
+                y: Union[np.ndarray, torch.Tensor] = None
+                ) -> torch.Tensor:
+        """
+        Rules for conversion of numpy arrays to torch tensors
+        """
+        if isinstance(X, np.ndarray):
+            X = torch.from_numpy(X).float()
+        if isinstance(y, np.ndarray):
+            y = torch.from_numpy(y).float()
+        return X, y
+
+
+class MMD_regpVAE2(aoi.models.VAE):
+    def __init__(self, in_dim: int = None, latent_dim: int = 2, nb_classes: int = 0, seed: int = 0, **kwargs: int | bool | str) -> None:
+        self.h_dim = kwargs.get("h_dim", 256)
+        self.p_losses = []
+        self.m_losses = []
+        self.b_losses = []
+        super().__init__(in_dim, latent_dim, nb_classes, seed, **kwargs)
+
+    def elbo_fn(self, x: torch.Tensor, x_reconstr: torch.Tensor, y: torch.Tensor, *args: torch.Tensor, **kwargs: Union[list, float, int]) -> torch.Tensor:
+        if len(args) == 2:
+            z_mean, z_logsd = args
+            ml = -mmd_loss(z_mean, y, **kwargs)
+            bl = -beta_loss(z_mean, **kwargs)
+            self.m_losses.append(ml.cpu().detach().numpy())
+            self.b_losses.append(bl.cpu().detach().numpy())
+        return bl + ml + super().elbo_fn(x, x_reconstr, *args, **kwargs)
+
+    def forward_compute_elbo(self,
+                             x: torch.Tensor,
+                             y: Optional[torch.Tensor] = None,
+                             mode: str = "train"
+                             ) -> torch.Tensor:
+        """
+        VAE's forward pass with training/test loss computation
+        """
+        x = x.to(self.device)
+        z_mean_all = torch.zeros((x.shape[0], self.z_dim * 2)).to(self.device)
+        for i in range(2):
+            xs = x[:,i,:,:]
+            if mode == "eval":
+                with torch.no_grad():
+                    z_mean, z_logsd = self.encoder_net(xs)
+            else:
+                z_mean, z_logsd = self.encoder_net(xs)
+                self.kdict_["num_iter"] += 1
+            z_mean_all[:, i * (self.z_dim): (i + 1) * (self.z_dim)] = z_mean
+            z_sd = torch.exp(z_logsd)
+            z = self.reparameterize(z_mean, z_sd)
+            if mode == "eval":
+                with torch.no_grad():
+                    x_reconstr = self.decoder_net(z)
+            else:
+                x_reconstr = self.decoder_net(z)
+            if i == 0:
+                elbo = self.elbo_fn(xs, x_reconstr, y, z_mean, z_logsd, **self.kdict_)
+            else:
+                elbo += self.elbo_fn(xs, x_reconstr, y, z_mean, z_logsd, **self.kdict_)
+        if mode == "eval":
+            with torch.no_grad():
+                p = self.fcl_net(z_mean_all)
+                pl = -p_loss(y, p, **self.kdict_)
+                self.p_losses.append(pl.cpu().detach().numpy())
+        else:
+            p = self.fcl_net(z_mean_all)
+            pl = -p_loss(y, p, **self.kdict_)
+        elbo += pl
+        return elbo
+
+    def pred_p(self, x: torch.Tensor | np.ndarray):
+        if isinstance(x, np.ndarray):
+            x = torch.from_numpy(x).float()
+        z_mean_all = torch.zeros((x.shape[0], self.z_dim * 2)).to(self.device)
+        for i in range(2):
+            xs = x[:,i,:,:]
+            with torch.no_grad():
+                z_mean, z_logsd = self.encode(xs)
+                z_mean_all[:, i * (self.z_dim): (i + 1) * (self.z_dim)] = z_mean
+        with torch.no_grad():
+            p = self.fcl_net(z_mean_all)
+        return p
+    
+    def _check_inputs(self, X_train: np.ndarray, y_train: np.ndarray | None = None, X_test: np.ndarray | None = None, y_test: np.ndarray | None = None) -> None:
+        pass
+
+    def set_model(self,
+                  encoder_net: Type[torch.nn.Module],
+                  decoder_net: Type[torch.nn.Module]
+                  ) -> None:
+        """
+        Sets encoder and decoder models
+        """
+        self.encoder_net = encoder_net
+        self.decoder_net = decoder_net
+        in_dim = self.z_dim * 2
         # in_dim = self.z_dim - 3 if self.translation else self.z_dim - 2
         self.fcl_net = FCLNet(in_dim, self.h_dim)
         self.encoder_net.to(self.device)
